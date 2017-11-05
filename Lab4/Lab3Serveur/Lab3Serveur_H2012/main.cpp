@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <strstream>
 #include <locale>
+#include <vector>
+#include <queue>
 
 #define MAX_MSG_LEN_BYTES 200
 
@@ -89,6 +91,22 @@ static struct ErrorEntry {
 };
 const int kNumMessages = sizeof(gaErrorList) / sizeof(ErrorEntry);
 
+typedef struct ClientInfo {
+	SOCKET sd;
+	DWORD nThreadID;
+};
+
+typedef struct Message {
+	SOCKET sender;
+	char* message[200];
+};
+
+// Queue FIFO pour les nouvellles connexions
+std::queue<ClientInfo> *nouveauxClients = new std::queue<ClientInfo>();
+
+// Queue FIFO pour contenir les messages
+std::queue<Message> *messageQueue = new std::queue<Message>();
+
 
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
 // A function similar in spirit to Unix's perror() that tacks a canned 
@@ -153,10 +171,10 @@ int main(void)
 	char option[] = "1";
 	setsockopt(ServerSocket, SOL_SOCKET, SO_REUSEADDR, option, sizeof(option));
 
-    //----------------------
+	//----------------------
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
-	int port=10026; // TODO: Set port using the user input
+	int port=5040; // TODO: Set port using the user input
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
@@ -175,6 +193,11 @@ int main(void)
 		WSACleanup();
 		return 1;
 	}
+
+	// TODO: Creation d'un consommateur pour envoyer des messages
+	DWORD msSenderThreadID;
+	SOCKET tempSocket; // ?????????? HOW CAN WE CREATE A THREAD THAT DOESN'T NEED INPUT PARAMETER?
+	CreateThread(0, 0, MessageSendHandler, (void*)socket, 0, &msSenderThreadID);
 	
 	//----------------------
 	// Listen for incoming connection requests.
@@ -188,7 +211,7 @@ int main(void)
 
 	printf("En attente des connections des clients sur le port %d...\n\n", ntohs(service.sin_port));
 
-    while (true) {	
+	while (true) {	
 		sockaddr_in sinRemote;
 		int nAddrSize = sizeof(sinRemote);
 		// Create a SOCKET for accepting incoming requests.
@@ -200,13 +223,22 @@ int main(void)
                     ntohs(sinRemote.sin_port) << "." <<
                     endl;
 
-            DWORD nThreadID;
+			DWORD nThreadID;
+			// Creer le producteur
             CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
+
+			// Creer le ClientInfo
+			ClientInfo client = { sd, nThreadID };
+			nouveauxClients->push(client);
+
         } else {
             cerr << WSAGetLastErrorMessage("Echec d'une connection.") << 
                     endl;
         }
     }
+
+	delete[] nouveauxClients;
+	delete[] messageQueue;
 }
 
 //// ClientMessageHandler ///////////////////////////////////////////////////////
@@ -248,10 +280,13 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 	} while (readBytes > 0);*/
 
-	while (1) {
+	while (true) {
 		char readBuffer[200];
 		if (recv(sd, readBuffer, 200, 0)) {
-			std::cout << send(sd, readBuffer, 200, 0);
+			Message msg = { sd, readBuffer };
+			messageQueue->push(msg);
+			std::cout << GetCurrentThreadId() << " : " << readBuffer << std::endl;
+			//send(sd, readBuffer, 200, 0);
 		}
 	}
 	
@@ -270,6 +305,61 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 	return 0;
 }
+
+//// MessageSendHandler ///////////////////////////////////////////////////////
+// TODO: Put relevant function description here
+
+DWORD WINAPI MessageSendHandler(void* sd_)
+{
+	SOCKET sd = (SOCKET)sd_;
+	//msgQueue = (SOCKET)msgQueue_;
+
+	// Liste des clients connectes
+	std::vector<ClientInfo> *clients = new std::vector<ClientInfo>;
+
+	while (true) {
+		// Ajouter les nouveaux clients et envoyer les 15 derniers messages
+		while (!nouveauxClients->empty()) {
+			// TODO: Envoyer les 15 derniers messages
+
+			// Ajout dans la liste des clients
+			clients->push_back(nouveauxClients->front());
+			std::cout << "Client" << nouveauxClients->front().nThreadID << "ajoute" << endl;
+			nouveauxClients->pop();			
+		}
+
+		// Envoyer les messages a tous les clients sauf a celui qui l'a envoye
+		while (!messageQueue->empty()) {
+			Message msg = messageQueue->front();
+			for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ++it) {
+				// Verifier que ce n'est pas le meme client qui a envoye le message
+				if (msg.sender != it->sd)
+					send(it->sd, *msg.message, 200, 0);
+			}
+			
+			messageQueue->pop();
+		}
+		
+	}
+
+	// Shut down the socket
+	/*int ishutDown;
+
+	ishutDown = shutdown(sd, SD_SEND);
+	if (ishutDown == SOCKET_ERROR) {
+	printf("shutdown failed with error: %d\n", WSAGetLastError());
+	closesocket(ishutDown);
+	WSACleanup();
+	return 1;
+	}*/
+
+
+	delete[] clients;
+	//closesocket(sd);
+
+	return 0;
+}
+
 // Do Something with the information
 void DoSomething( char *src, char *dest )
 {
