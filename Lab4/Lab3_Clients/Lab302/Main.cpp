@@ -17,8 +17,8 @@ int __cdecl main(int argc, char **argv)
     struct addrinfo *result = NULL,
                     *ptr = NULL,
                     hints;
-    char motEnvoye[10];
-	char motRecu[10];
+    char motEnvoye[200];
+	char motRecu[200];
     int iResult;
 
 	//--------------------------------------------
@@ -52,8 +52,8 @@ int __cdecl main(int argc, char **argv)
 	//char *host = "L4708-XX";
 	//char *host = "L4708-XX.lerb.polymtl.ca";
 	//char *host = "add_IP locale";
-	char *host = "132.207.29.113";
-	char *port = "10026";
+	char *host = "132.207.29.111";
+	char *port = "5040";
 
 	std::string tmp;
 	std::cout << "Entrez l'adresse du serveur avec lequel vous voulez communiquer : ";
@@ -118,7 +118,7 @@ int __cdecl main(int argc, char **argv)
 	while (std::string(motEnvoye) != "exit!!!") {
 		
 		// Envoyer le mot au serveur
-		iResult = send(leSocket, motEnvoye, 7, 0);
+		iResult = send(leSocket, motEnvoye, 200, 0);
 		if (iResult == SOCKET_ERROR) {
 			printf("Erreur du send: %d\n", WSAGetLastError());
 			closesocket(leSocket);
@@ -132,11 +132,11 @@ int __cdecl main(int argc, char **argv)
 
 		//------------------------------
 		// Maintenant, on va recevoir l' information envoyée par le serveur
-		iResult = recv(leSocket, motRecu, 7, 0);
+		iResult = recv(leSocket, motRecu, 200, 0);
 		if (iResult > 0) {
 			printf("Nombre d'octets recus: %d\n", iResult);
-			motRecu[iResult] = '\0';
-			printf("Le mot recu est %*s\n", iResult, motRecu);
+			motRecu[iResult-1] = '\0';
+			printf("Le mot recu est %s\n", motRecu);
 		}
 		else {
 			printf("Erreur de reception : %d\n", WSAGetLastError());
