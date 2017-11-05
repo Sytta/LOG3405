@@ -160,7 +160,7 @@ int main(void)
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
-	thisHost = gethostbyname("132.207.29.113");  // TODO: Set server IP using user input
+	thisHost = gethostbyname("132.207.29.111");  // TODO: Set server IP using user input
 	char* ip;
 	ip = inet_ntoa(*(struct in_addr*) *thisHost->h_addr_list);
 	printf("Adresse locale trouvee %s : \n\n", ip);
@@ -217,7 +217,7 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	SOCKET sd = (SOCKET)sd_;
 
 	// Read Data from client
-	// TODO: Change buffer sizes
+	/*// TODO: Change buffer sizes
 	char readBuffer[10], outBuffer[10];
 	int readBytes, sendBytes;
 
@@ -246,10 +246,17 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 			return 0;
 		}
 
-	} while (readBytes > 0);
+	} while (readBytes > 0);*/
+
+	while (1) {
+		char readBuffer[200];
+		if (recv(sd, readBuffer, 200, 0)) {
+			std::cout << send(sd, readBuffer, 200, 0);
+		}
+	}
 	
 	 // Shut down the socket
-	int ishutDown;
+	/*int ishutDown;
 
 	ishutDown = shutdown(sd, SD_SEND);
 	if (ishutDown == SOCKET_ERROR) {
@@ -257,7 +264,9 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 		closesocket(ishutDown);
 		WSACleanup();
 		return 1;
-	}
+	}*/
+
+	closesocket(sd);
 
 	return 0;
 }
