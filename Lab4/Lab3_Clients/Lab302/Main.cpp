@@ -52,8 +52,8 @@ int __cdecl main(int argc, char **argv)
 	//char *host = "L4708-XX";
 	//char *host = "L4708-XX.lerb.polymtl.ca";
 	//char *host = "add_IP locale";
-	char *host = "132.207.29.111";
-	char *port = "5040";
+	char *host = "132.207.214.39";
+	char *port = "10026";
 
 	std::string tmp;
 	std::cout << "Entrez l'adresse du serveur avec lequel vous voulez communiquer : ";

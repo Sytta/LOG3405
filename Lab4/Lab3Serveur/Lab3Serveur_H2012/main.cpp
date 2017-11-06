@@ -17,6 +17,7 @@ using namespace std;
 
 // External functions
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
+extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern void DoSomething( char *src, char *dest );
 
 // List of Winsock error constants mapped to an interpretation string.
@@ -174,11 +175,11 @@ int main(void)
 	//----------------------
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
-	int port=5040; // TODO: Set port using the user input
+	int port=10026; // TODO: Set port using the user input
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
-	thisHost = gethostbyname("132.207.29.111");  // TODO: Set server IP using user input
+	thisHost = gethostbyname("132.207.214.39");  // TODO: Set server IP using user input
 	char* ip;
 	ip = inet_ntoa(*(struct in_addr*) *thisHost->h_addr_list);
 	printf("Adresse locale trouvee %s : \n\n", ip);
@@ -197,7 +198,7 @@ int main(void)
 	// TODO: Creation d'un consommateur pour envoyer des messages
 	DWORD msSenderThreadID;
 	SOCKET tempSocket; // ?????????? HOW CAN WE CREATE A THREAD THAT DOESN'T NEED INPUT PARAMETER?
-	CreateThread(0, 0, MessageSendHandler, (void*)socket, 0, &msSenderThreadID);
+	CreateThread(0, 0, MessageSendHandler, NULL, 0, &msSenderThreadID);
 	
 	//----------------------
 	// Listen for incoming connection requests.
@@ -311,7 +312,6 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 DWORD WINAPI MessageSendHandler(void* sd_)
 {
-	SOCKET sd = (SOCKET)sd_;
 	//msgQueue = (SOCKET)msgQueue_;
 
 	// Liste des clients connectes
