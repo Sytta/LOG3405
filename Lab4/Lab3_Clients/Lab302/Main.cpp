@@ -10,16 +10,19 @@
 // Link avec ws2_32.lib
 #pragma comment(lib, "ws2_32.lib")
 
+SOCKET leSocket;
+
+// External functions
+extern DWORD WINAPI MessageRecvHandler(void* sd_);
+
 int __cdecl main(int argc, char **argv)
 {
     WSADATA wsaData;
-    SOCKET leSocket;
     struct addrinfo *result = NULL,
                     *ptr = NULL,
                     hints;
     char motEnvoye[200];
-	char motRecu[200];
-    int iResult;
+	int iResult;
 
 	//--------------------------------------------
     // Initialisation de Winsock
@@ -53,7 +56,7 @@ int __cdecl main(int argc, char **argv)
 	//char *host = "L4708-XX.lerb.polymtl.ca";
 	//char *host = "add_IP locale";
 	char *host = "132.207.214.39";
-	char *port = "10026";
+	char *port = "5040";
 
 	std::string tmp;
 	std::cout << "Entrez l'adresse du serveur avec lequel vous voulez communiquer : ";
@@ -107,6 +110,10 @@ int __cdecl main(int argc, char **argv)
 	printf("Connecte au serveur %s:%s\n\n", host, port);
     freeaddrinfo(result);
 
+	// Creer le thread pour recevoir des messages
+	DWORD msRecvTheadID;
+	CreateThread(0, 0, MessageRecvHandler, NULL, 0, &msRecvTheadID);
+
 	//----------------------------
 	// Demander à l'usager un mot a envoyer au serveur
 	//-----------------------------
@@ -132,16 +139,6 @@ int __cdecl main(int argc, char **argv)
 
 		//------------------------------
 		// Maintenant, on va recevoir l' information envoyée par le serveur
-		iResult = recv(leSocket, motRecu, 200, 0);
-		if (iResult > 0) {
-			printf("Nombre d'octets recus: %d\n", iResult);
-			motRecu[iResult-1] = '\0';
-			printf("Le mot recu est %s\n", motRecu);
-		}
-		else {
-			printf("Erreur de reception : %d\n", WSAGetLastError());
-		}
-
 		printf("Saisir un mot de 7 lettres pour envoyer au serveur: ");
 		gets_s(motEnvoye);
 		printf("Le mot envoye est: %s\n", motEnvoye);
@@ -154,4 +151,20 @@ int __cdecl main(int argc, char **argv)
 	printf("Appuyez une touche pour finir\n");
 	getchar();
     return 0;
+}
+
+DWORD WINAPI MessageRecvHandler(void* sd_) 
+{
+	int iResult;
+	char motRecu[200];
+
+	iResult = recv(leSocket, motRecu, 200, 0);
+	if (iResult > 0) {
+		printf("Nombre d'octets recus: %d\n", iResult);
+		motRecu[iResult - 1] = '\0';
+		printf("Le mot recu est %s\n", motRecu);
+	}
+	else {
+		printf("Erreur de reception : %d\n", WSAGetLastError());
+	}
 }
