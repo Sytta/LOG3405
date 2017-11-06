@@ -160,9 +160,9 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 
 	iResult = recv(leSocket, motRecu, 200, 0);
 	if (iResult > 0) {
-		printf("Nombre d'octets recus: %d\n", iResult);
+		//printf("Nombre d'octets recus: %d\n", iResult);
 		motRecu[iResult - 1] = '\0';
-		printf("Le mot recu est %s\n", motRecu);
+		printf("\nLe mot recu est %s\n", motRecu);
 	}
 	else {
 		printf("Erreur de reception : %d\n", WSAGetLastError());
