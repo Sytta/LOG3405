@@ -333,7 +333,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ++it) {
 				// Verifier que ce n'est pas le meme client qui a envoye le message
 				if (msg.sender != it->sd)
-					send(it->sd, msg.message, 200, 0);
+					send(it->sd, msg.message, strlen(msg.message), 0);
 			}
 			
 			messageQueue->pop();
