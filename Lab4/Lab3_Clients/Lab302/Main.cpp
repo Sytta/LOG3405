@@ -125,7 +125,7 @@ int __cdecl main(int argc, char **argv)
 	while (std::string(motEnvoye) != "exit!!!") {
 		
 		// Envoyer le mot au serveur
-		iResult = send(leSocket, motEnvoye, 200, 0);
+		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
 		if (iResult == SOCKET_ERROR) {
 			printf("Erreur du send: %d\n", WSAGetLastError());
 			closesocket(leSocket);
@@ -162,7 +162,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 		iResult = recv(leSocket, motRecu, 200, 0);
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);
-			motRecu[iResult - 1] = '\0';
+			motRecu[iResult] = '\0';
 			printf("\nLe mot recu est %s\n", motRecu);
 		}
 		else {
