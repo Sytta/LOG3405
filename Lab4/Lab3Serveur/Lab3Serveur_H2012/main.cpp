@@ -99,7 +99,7 @@ typedef struct ClientInfo {
 
 typedef struct Message {
 	SOCKET sender;
-	char* message[200];
+	char* message;
 };
 
 // Queue FIFO pour les nouvellles connexions
@@ -175,11 +175,11 @@ int main(void)
 	//----------------------
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
-	int port=10026; // TODO: Set port using the user input
+	int port=5040; // TODO: Set port using the user input
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
-	thisHost = gethostbyname("132.207.214.39");  // TODO: Set server IP using user input
+	thisHost = gethostbyname("132.207.29.108");  // TODO: Set server IP using user input
 	char* ip;
 	ip = inet_ntoa(*(struct in_addr*) *thisHost->h_addr_list);
 	printf("Adresse locale trouvee %s : \n\n", ip);
@@ -197,7 +197,6 @@ int main(void)
 
 	// TODO: Creation d'un consommateur pour envoyer des messages
 	DWORD msSenderThreadID;
-	SOCKET tempSocket; // ?????????? HOW CAN WE CREATE A THREAD THAT DOESN'T NEED INPUT PARAMETER?
 	CreateThread(0, 0, MessageSendHandler, NULL, 0, &msSenderThreadID);
 	
 	//----------------------
@@ -334,7 +333,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ++it) {
 				// Verifier que ce n'est pas le meme client qui a envoye le message
 				if (msg.sender != it->sd)
-					send(it->sd, *msg.message, 200, 0);
+					send(it->sd, msg.message, 200, 0);
 			}
 			
 			messageQueue->pop();
