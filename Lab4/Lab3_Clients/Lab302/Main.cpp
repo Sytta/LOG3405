@@ -14,6 +14,7 @@ SOCKET leSocket;
 
 // External functions
 extern DWORD WINAPI MessageRecvHandler(void* sd_);
+extern bool isValidIP(char* IP);
 
 int __cdecl main(int argc, char **argv)
 {
@@ -55,14 +56,24 @@ int __cdecl main(int argc, char **argv)
 	//char *host = "L4708-XX";
 	//char *host = "L4708-XX.lerb.polymtl.ca";
 	//char *host = "add_IP locale";
-	char *host = "132.207.214.39";
-	char *port = "5040";
+	char host[15];
+	char port[5];
 
-	std::string tmp;
-	std::cout << "Entrez l'adresse du serveur avec lequel vous voulez communiquer : ";
-	std::cin >> tmp;
-	std::cin.get();
-	host = const_cast<char*>(tmp.c_str());
+	do {
+		std::string tmp;
+		std::cout << "Entrez l'adresse du serveur avec lequel vous voulez communiquer : ";
+		std::cin >> tmp;
+		std::cin.get();
+		strcpy(host, tmp.c_str());
+	} while (!isValidIP(host));
+
+	do {
+		std::string tmp;
+		std::cout << "Entrez le port du serveur avec lequel vous voulez communiquer : ";
+		std::cin >> tmp;
+		std::cin.get();
+		strcpy(port, tmp.c_str());
+	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);
 
 	// getaddrinfo obtient l'adresse IP du host donné
     iResult = getaddrinfo(host, port, &hints, &result);
@@ -151,6 +162,15 @@ int __cdecl main(int argc, char **argv)
 	printf("Appuyez une touche pour finir\n");
 	getchar();
     return 0;
+}
+
+// Verifier la validite de l'IP
+// Inspiration: https://stackoverflow.com/questions/791982/determine-if-a-string-is-a-valid-ip-address-in-c
+bool isValidIP(char *IP)
+{
+	struct sockaddr_in iptest;
+	int result = inet_pton(AF_INET, IP, &(iptest.sin_addr));
+	return result != 0;
 }
 
 DWORD WINAPI MessageRecvHandler(void* sd_) 

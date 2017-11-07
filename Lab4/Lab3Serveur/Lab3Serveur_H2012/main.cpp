@@ -7,6 +7,7 @@
 #include <locale>
 #include <vector>
 #include <queue>
+#include <ws2tcpip.h>
 
 #define MAX_MSG_LEN_BYTES 200
 
@@ -19,6 +20,7 @@ using namespace std;
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern void DoSomething( char *src, char *dest );
+extern bool isValidIP(char *IP);
 
 // List of Winsock error constants mapped to an interpretation string.
 // Note that this list must remain sorted by the error constants'
@@ -176,10 +178,27 @@ int main(void)
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
 	int port=5040; // TODO: Set port using the user input
+	char host[15];
+
+	do {
+		std::string tmp;
+		std::cout << "Entrez l'adresse du serveur : ";
+		std::cin >> tmp;
+		std::cin.get();
+		strcpy(host, tmp.c_str());
+	} while (!isValidIP(host));
+
+	do {
+		std::string tmp;
+		std::cout << "Entrez le port du serveur : ";
+		std::cin >> tmp;
+		std::cin.get();
+		port = std::stoi(tmp);
+	} while (port > 5050 || port < 5000);
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
-	thisHost = gethostbyname("132.207.29.108");  // TODO: Set server IP using user input
+	thisHost = gethostbyname(host);  // TODO: Set server IP using user input
 	char* ip;
 	ip = inet_ntoa(*(struct in_addr*) *thisHost->h_addr_list);
 	printf("Adresse locale trouvee %s : \n\n", ip);
@@ -239,6 +258,15 @@ int main(void)
 
 	delete[] nouveauxClients;
 	delete[] messageQueue;
+}
+
+// Verifier la validite de l'IP
+// Inspiration: https://stackoverflow.com/questions/791982/determine-if-a-string-is-a-valid-ip-address-in-c
+bool isValidIP(char *IP)
+{
+	struct sockaddr_in iptest;
+	int result = inet_pton(AF_INET, IP, &(iptest.sin_addr));
+	return result != 0;
 }
 
 //// ClientMessageHandler ///////////////////////////////////////////////////////
