@@ -253,6 +253,8 @@ int main(void)
         } else {
             cerr << WSAGetLastErrorMessage("Echec d'une connection.") << 
                     endl;
+			closesocket(sd);
+			WSACleanup();
         }
     }
 
@@ -361,8 +363,14 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			Message msg = messageQueue->front();
 			for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ++it) {
 				// Verifier que ce n'est pas le meme client qui a envoye le message
-				if (msg.sender != it->sd)
-					send(it->sd, msg.message, strlen(msg.message), 0);
+				if (msg.sender != it->sd) {
+					int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
+					if (iSendResult == SOCKET_ERROR) {
+						printf("send failed with error: %d\n", WSAGetLastError());
+						cout << "Client " << it->nThreadID << " a quitte" << endl;
+						clients->erase(it);
+					}
+				}
 			}
 			
 			messageQueue->pop();
