@@ -19,7 +19,6 @@ using namespace std;
 // External functions
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
-extern void DoSomething( char *src, char *dest );
 extern bool isValidIP(char *IP);
 
 // List of Winsock error constants mapped to an interpretation string.
@@ -110,7 +109,6 @@ std::queue<ClientInfo> *nouveauxClients = new std::queue<ClientInfo>();
 // Queue FIFO pour contenir les messages
 std::queue<Message> *messageQueue = new std::queue<Message>();
 
-
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
 // A function similar in spirit to Unix's perror() that tacks a canned 
 // interpretation of the value of WSAGetLastError() onto the end of a
@@ -178,23 +176,24 @@ int main(void)
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
 	int port=5040; // TODO: Set port using the user input
-	char host[15];
+	//char host[15];
 
-	do {
+	/*do {
 		std::string tmp;
 		std::cout << "Entrez l'adresse du serveur : ";
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(host, tmp.c_str());
-	} while (!isValidIP(host));
+	} while (!isValidIP(host));*/
+	char *host = "132.207.29.123";// TODO Remove this hardcoding (for debugging) 
 
-	do {
+	/*do {
 		std::string tmp;
 		std::cout << "Entrez le port du serveur : ";
 		std::cin >> tmp;
 		std::cin.get();
 		port = std::stoi(tmp);
-	} while (port > 5050 || port < 5000);
+	} while (port > 5050 || port < 5000);*/
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
@@ -308,30 +307,32 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 	} while (readBytes > 0);*/
 
-	while (true) {
-		char readBuffer[200];
-		if (recv(sd, readBuffer, 200, 0)) {
+	char readBuffer[200];
+	int readBytes;
+
+	do {
+		readBytes = recv(sd, readBuffer, 200, 0);
+		if (readBytes > 0) {
 			Message msg = { sd, readBuffer };
 			messageQueue->push(msg);
 			std::cout << GetCurrentThreadId() << " : " << readBuffer << std::endl;
 			//send(sd, readBuffer, 200, 0);
+		} else {
+			cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
+			cout << "Fermeture du client." << endl;
+			break;
 		}
-	}
-	
-	 // Shut down the socket
-	//int ishutDown;
+	} while (readBytes > 0);
 
 	int ishutDown = shutdown(sd, SD_SEND);
 	if (ishutDown == SOCKET_ERROR) {
 		printf("shutdown failed with error: %d\n", WSAGetLastError());
 		closesocket(ishutDown);
-		WSACleanup();
+		//WSACleanup();  // Only do this when close the server. Don't do this when close each client
 		return 1;
 	}
-
 	closesocket(sd);
-	WSACleanup();
-
+	//WSACleanup();  // Only do this when close the server. Don't do this when close each client
 	return 0;
 }
 
@@ -387,14 +388,4 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 	//WSACleanup();
 
 	return 0;
-}
-
-// Do Something with the information
-void DoSomething( char *src, char *dest )
-{
-	auto index = 0;
-	for (auto i = 6; i >= 0; i--)
-	{
-		dest[index++] = (i % 2 != 0) ? src[i] : toupper(src[i]);
-	}
 }
