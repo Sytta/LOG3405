@@ -319,17 +319,18 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	}
 	
 	 // Shut down the socket
-	/*int ishutDown;
+	//int ishutDown;
 
-	ishutDown = shutdown(sd, SD_SEND);
+	int ishutDown = shutdown(sd, SD_SEND);
 	if (ishutDown == SOCKET_ERROR) {
 		printf("shutdown failed with error: %d\n", WSAGetLastError());
 		closesocket(ishutDown);
 		WSACleanup();
 		return 1;
-	}*/
+	}
 
 	closesocket(sd);
+	WSACleanup();
 
 	return 0;
 }
@@ -383,6 +384,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 
 	delete[] clients;
 	//closesocket(sd);
+	//WSACleanup();
 
 	return 0;
 }

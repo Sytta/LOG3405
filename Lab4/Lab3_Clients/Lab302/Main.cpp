@@ -129,9 +129,10 @@ int __cdecl main(int argc, char **argv)
 	// Demander à l'usager un mot a envoyer au serveur
 	//-----------------------------
 
-	printf("Saisir un mot de 7 lettres pour envoyer au serveur: ");
+	std::cout << "Enjoy votre chat!" << std::endl;
+	std::cout << "Me: ";
 	gets_s(motEnvoye);
-	printf("Le mot envoye est: %s\n", motEnvoye);
+	//printf("Le mot envoye est: %s\n", motEnvoye);
 
 	while (std::string(motEnvoye) != "exit!!!") {
 		
@@ -146,13 +147,21 @@ int __cdecl main(int argc, char **argv)
 			return 1;
 		}
 
-		printf("Nombre d'octets envoyes : %ld\n", iResult);
+		//printf("Nombre d'octets envoyes : %ld\n", iResult);
 
 		//------------------------------
 		// Maintenant, on va recevoir l' information envoyée par le serveur
-		printf("Saisir un mot de 7 lettres pour envoyer au serveur: ");
+		//printf("Saisir un mot de 7 lettres pour envoyer au serveur: ");
+		std::cout << "Me: ";
 		gets_s(motEnvoye);
-		printf("Le mot envoye est: %s\n", motEnvoye);
+	}
+
+	iResult = shutdown(leSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR) {
+		printf("shutdown failed: %d\n", WSAGetLastError());
+		closesocket(leSocket);
+		WSACleanup();
+		return 1;
 	}
 
     // cleanup
@@ -183,7 +192,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);
 			motRecu[iResult] = '\0';
-			printf("\nLe mot recu est %s\n", motRecu);
+			printf("Other: %s\n", motRecu);
 		}
 		else {
 			printf("Erreur de reception : %d\n", WSAGetLastError());
