@@ -56,7 +56,7 @@ int __cdecl main(int argc, char **argv)
 	//char *host = "L4708-XX";
 	//char *host = "L4708-XX.lerb.polymtl.ca";
 	//char *host = "add_IP locale";
-	char host[15];
+	/*char host[15];
 	char port[5];
 
 	do {
@@ -73,7 +73,11 @@ int __cdecl main(int argc, char **argv)
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(port, tmp.c_str());
-	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);
+	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);*/
+
+	//char *host = "132.207.29.123";
+	char *host = "127.0.0.1";
+	char *port = "5040";
 
 	// getaddrinfo obtient l'adresse IP du host donné
     iResult = getaddrinfo(host, port, &hints, &result);
@@ -134,7 +138,7 @@ int __cdecl main(int argc, char **argv)
 	gets_s(motEnvoye);
 	//printf("Le mot envoye est: %s\n", motEnvoye);
 
-	while (std::string(motEnvoye) != "exit!!!") {
+	while (std::string(motEnvoye) != "exit") {
 		
 		// Envoyer le mot au serveur
 		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
@@ -146,6 +150,9 @@ int __cdecl main(int argc, char **argv)
 			getchar();
 			return 1;
 		}
+
+		// Terminer le thread pour recevoir des mesages
+		//ExitThread(msRecvTheadID);
 
 		//printf("Nombre d'octets envoyes : %ld\n", iResult);
 
@@ -196,6 +203,8 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 		}
 		else {
 			printf("Erreur de reception : %d\n", WSAGetLastError());
+			std::cout << "Au revoir!" << std::endl;
+			return 0;
 		}
 	}
 }

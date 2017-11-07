@@ -185,8 +185,8 @@ int main(void)
 		std::cin.get();
 		strcpy(host, tmp.c_str());
 	} while (!isValidIP(host));*/
-	char *host = "132.207.29.123";// TODO Remove this hardcoding (for debugging) 
-
+	//char *host = "132.207.29.123";// TODO Remove this hardcoding (for debugging) 
+	char *host = "127.0.0.1";
 	/*do {
 		std::string tmp;
 		std::cout << "Entrez le port du serveur : ";
