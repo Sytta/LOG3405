@@ -369,7 +369,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 					if (iSendResult == SOCKET_ERROR) {
 						printf("send failed with error: %d\n", WSAGetLastError());
 						cout << "Client " << it->nThreadID << " a quitte" << endl;
-						clients->erase(it);
+						it = clients->erase(it);
 					}
 				}
 			}
