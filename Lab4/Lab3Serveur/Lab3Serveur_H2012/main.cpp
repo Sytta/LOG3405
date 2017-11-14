@@ -6,10 +6,13 @@
 #include <strstream>
 #include <locale>
 #include <vector>
+#include <map>
 #include <queue>
+#include <fstream>
 #include <ws2tcpip.h>
 
 #define MAX_MSG_LEN_BYTES 200
+#define USERS_FILENAME "../utilisateurs.txt"
 
 using namespace std;
 
@@ -147,6 +150,43 @@ const char* WSAGetLastErrorMessage(const char* pcMessagePrefix, int nErrorID = 0
     return acErrorBuffer;
 }
 
+// Gestion des utilisateurs et des mots de passe
+fstream userFile;
+map<string, string> users;
+void parseExistingUsers() {
+	string username;
+	string password;
+
+	userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
+	while (getline(userFile, username, ';')) {
+		getline(userFile, password);
+		users.insert(pair<string, string>(username, password));
+		cout << "username: " << username << ", password: " << password << endl;
+	}
+	userFile.close();
+}
+
+bool verifyUser(SOCKET sd) {
+	// TODO Get username and password from user
+	string username = "yano";
+	string password = "123";
+
+	// Check if user exists in file
+	auto it = users.find(username);
+	if (it != users.end()) {
+		// Verify the password
+		cout << "user found" << endl;
+		return (it->second == password) ? true : false;
+	} else {
+		// Create the user entry
+		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
+		users.insert(pair<string, string>(username, password));
+		userFile << username << ";" << password << endl;
+		userFile.close();
+		return true;
+	}
+}
+
 int main(void) 
 {
 	//----------------------
@@ -217,6 +257,9 @@ int main(void)
 	DWORD msSenderThreadID;
 	CreateThread(0, 0, MessageSendHandler, NULL, 0, &msSenderThreadID);
 	
+	// Ouvrir et parser le contenu du fichier des utilisateurs et des mots de passe
+	parseExistingUsers();
+
 	//----------------------
 	// Listen for incoming connection requests.
 	// on the created socket
@@ -235,7 +278,7 @@ int main(void)
 		// Create a SOCKET for accepting incoming requests.
 		// Accept the connection.
 		SOCKET sd = accept(ServerSocket, (sockaddr*)&sinRemote, &nAddrSize);
-        if (sd != INVALID_SOCKET) {
+        if (sd != INVALID_SOCKET && verifyUser(sd)) {
 			cout << "Connection acceptee De : " <<
                     inet_ntoa(sinRemote.sin_addr) << ":" <<
                     ntohs(sinRemote.sin_port) << "." <<
