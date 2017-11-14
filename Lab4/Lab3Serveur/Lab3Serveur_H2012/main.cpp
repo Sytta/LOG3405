@@ -10,19 +10,36 @@
 #include <queue>
 #include <fstream>
 #include <ws2tcpip.h>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 
 #define MAX_MSG_LEN_BYTES 200
 #define USERS_FILENAME "../utilisateurs.txt"
+#define MESSAGE_LOG "../messageslog.txt"
 
 using namespace std;
 
 // link with Ws2_32.lib
 #pragma comment( lib, "ws2_32.lib" )
 
+typedef struct ClientInfo {
+	SOCKET sd;
+	DWORD nThreadID; // TODO: remplacer par username
+	string IP;
+};
+
+typedef struct Message {
+	ClientInfo sender;
+	char* message;
+};
+
 // External functions
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern bool isValidIP(char *IP);
+extern string writeMessageToFile(ofstream& msgFile, ClientInfo sender, string msg);
+extern void parseExistingUsers();
 
 // List of Winsock error constants mapped to an interpretation string.
 // Note that this list must remain sorted by the error constants'
@@ -96,21 +113,17 @@ static struct ErrorEntry {
 };
 const int kNumMessages = sizeof(gaErrorList) / sizeof(ErrorEntry);
 
-typedef struct ClientInfo {
-	SOCKET sd;
-	DWORD nThreadID;
-};
-
-typedef struct Message {
-	SOCKET sender;
-	char* message;
-};
-
 // Queue FIFO pour les nouvellles connexions
 std::queue<ClientInfo> *nouveauxClients = new std::queue<ClientInfo>();
 
+// Liste des clients connectes
+std::vector<ClientInfo> *clients = new std::vector<ClientInfo>;
+
 // Queue FIFO pour contenir les messages
 std::queue<Message> *messageQueue = new std::queue<Message>();
+
+// Deque to save the last 15 messages
+std::deque<Message> *last15Messages = new std::deque<Message>();
 
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
 // A function similar in spirit to Unix's perror() that tacks a canned 
@@ -148,43 +161,6 @@ const char* WSAGetLastErrorMessage(const char* pcMessagePrefix, int nErrorID = 0
     outs << ends;
     acErrorBuffer[sizeof(acErrorBuffer) - 1] = '\0';
     return acErrorBuffer;
-}
-
-// Gestion des utilisateurs et des mots de passe
-fstream userFile;
-map<string, string> users;
-void parseExistingUsers() {
-	string username;
-	string password;
-
-	userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
-	while (getline(userFile, username, ';')) {
-		getline(userFile, password);
-		users.insert(pair<string, string>(username, password));
-		cout << "username: " << username << ", password: " << password << endl;
-	}
-	userFile.close();
-}
-
-bool verifyUser(SOCKET sd) {
-	// TODO Get username and password from user
-	string username = "yano";
-	string password = "123";
-
-	// Check if user exists in file
-	auto it = users.find(username);
-	if (it != users.end()) {
-		// Verify the password
-		cout << "user found" << endl;
-		return (it->second == password) ? true : false;
-	} else {
-		// Create the user entry
-		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
-		users.insert(pair<string, string>(username, password));
-		userFile << username << ";" << password << endl;
-		userFile.close();
-		return true;
-	}
 }
 
 int main(void) 
@@ -278,7 +254,8 @@ int main(void)
 		// Create a SOCKET for accepting incoming requests.
 		// Accept the connection.
 		SOCKET sd = accept(ServerSocket, (sockaddr*)&sinRemote, &nAddrSize);
-        if (sd != INVALID_SOCKET && verifyUser(sd)) {
+		if (sd != INVALID_SOCKET /*&& verifyUser(sd)*/) {
+			string IP = std::string(inet_ntoa(sinRemote.sin_addr)) + " : " + std::to_string(ntohs(sinRemote.sin_port));
 			cout << "Connection acceptee De : " <<
                     inet_ntoa(sinRemote.sin_addr) << ":" <<
                     ntohs(sinRemote.sin_port) << "." <<
@@ -289,7 +266,8 @@ int main(void)
             CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
 
 			// Creer le ClientInfo
-			ClientInfo client = { sd, nThreadID };
+			// TODO: put username here
+			ClientInfo client = { sd, nThreadID, IP };
 			nouveauxClients->push(client);
 
         } else {
@@ -313,6 +291,73 @@ bool isValidIP(char *IP)
 	return result != 0;
 }
 
+// Gestion des utilisateurs et des mots de passe
+fstream userFile;
+map<string, string> users;
+void parseExistingUsers() {
+	string username;
+	string password;
+
+	userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
+	while (getline(userFile, username, ';')) {
+		getline(userFile, password);
+		users.insert(pair<string, string>(username, password));
+		cout << "username: " << username << ", password: " << password << endl;
+	}
+	userFile.close();
+}
+
+bool verifyUser(SOCKET sd) {
+	// TODO Get username and password from user
+	string username = "yano";
+	string password = "123";
+
+	// Check if user exists in file
+	auto it = users.find(username);
+	if (it != users.end()) {
+		// Verify the password
+		cout << "user found" << endl;
+		return (it->second == password) ? true : false;
+	}
+	else {
+		// Create the user entry
+		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
+		users.insert(pair<string, string>(username, password));
+		userFile << username << ";" << password << endl;
+		userFile.close();
+		return true;
+	}
+}
+
+ClientInfo getClientFromSocket(SOCKET sd) {
+	auto it = find_if(clients->begin(), clients->end(), [&](const ClientInfo& obj) {return obj.sd == sd; });
+	return *it;
+}
+
+//[Nom d’utilisateur - Adresse IP : Port client - 2017-10-13@13:02:01]:
+string writeMessageToFile(ofstream& msgFile, ClientInfo sender , string msg) {
+	// Get current time
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+
+	std::ostringstream oss;
+	oss << std::put_time(&tm, "%Y-%m-%d@%H:%M:%S");
+	string currentTime = oss.str();
+
+	// TODO: Write to file, change str to username
+	// Get rid of this after having username
+	std::stringstream sstr;
+	sstr << sender.nThreadID;
+	std::string str = sstr.str();
+
+	string log = "[" + str + " - " + sender.IP + " - " + currentTime + "]: " + msg;
+
+	cout << log << endl;
+	msgFile << log << endl;
+
+	return log;
+}
+
 //// ClientMessageHandler ///////////////////////////////////////////////////////
 // TODO: Put relevant function description here
 
@@ -320,48 +365,18 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 {
 	SOCKET sd = (SOCKET)sd_;
 
-	// Read Data from client
-	/*// TODO: Change buffer sizes
-	char readBuffer[10], outBuffer[10];
-	int readBytes, sendBytes;
-
-	do {
-		readBytes = recv(sd, readBuffer, 7, 0);  // TODO: Change number of characters to read
-		if (readBytes > 0) {
-			cout << "Received " << readBytes << " bytes from client." << endl;
-			cout << "Received " << readBuffer << " from client." << endl;
-			DoSomething(readBuffer, outBuffer);
-			sendBytes = send(sd, outBuffer, 7, 0);
-			if (sendBytes == SOCKET_ERROR) {
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(sd);
-				WSACleanup();
-				return 1;
-			}
-			printf("Bytes sent: %d\n", sendBytes);
-		}
-		else if (readBytes == 0) {
-			cout << "Connection closing\n";
-		} 
-		else {
-			cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
-			closesocket(sd);
-			WSACleanup();
-			return 0;
-		}
-
-	} while (readBytes > 0);*/
-
 	char readBuffer[200];
 	int readBytes;
 
 	do {
 		readBytes = recv(sd, readBuffer, 200, 0);
 		if (readBytes > 0) {
-			Message msg = { sd, readBuffer };
+			// Change socket to IP as sender
+			ClientInfo sender = getClientFromSocket(sd);
+			Message msg = { sender, readBuffer };
 			messageQueue->push(msg);
-			std::cout << GetCurrentThreadId() << " : " << readBuffer << std::endl;
-			//send(sd, readBuffer, 200, 0);
+			//std::cout << GetCurrentThreadId() << " : " << readBuffer << std::endl;
+
 		} else {
 			cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
 			cout << "Fermeture du client." << endl;
@@ -386,18 +401,26 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 DWORD WINAPI MessageSendHandler(void* sd_)
 {
-	//msgQueue = (SOCKET)msgQueue_;
-
-	// Liste des clients connectes
-	std::vector<ClientInfo> *clients = new std::vector<ClientInfo>;
+	// Ouvrir le fichier txt pour enregistrement de messages
+	ofstream msgFile;
+	msgFile.open(MESSAGE_LOG, fstream::out | fstream::app);
 
 	while (true) {
 		// Ajouter les nouveaux clients et envoyer les 15 derniers messages
 		while (!nouveauxClients->empty()) {
-			// TODO: Envoyer les 15 derniers messages
+			ClientInfo nv = nouveauxClients->front();
+			// Envoyer les 15 derniers messages
+			for (std::deque<Message>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
+				int iSendResult = send(nv.sd, it->message, strlen(it->message), 0);
+
+				if (iSendResult == SOCKET_ERROR) {
+					printf("send failed with error: %d\n", WSAGetLastError());
+					cout << "Client " << nv.nThreadID << " a quitte" << endl;
+				}
+			}
 
 			// Ajout dans la liste des clients
-			clients->push_back(nouveauxClients->front());
+			clients->push_back(nv);
 			std::cout << "Client" << nouveauxClients->front().nThreadID << "ajoute" << endl;
 			nouveauxClients->pop();			
 		}
@@ -409,15 +432,28 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 
 		// Envoyer un message a tout le monde sauf le client qui l'a envoyé
 		Message msg = messageQueue->front();
+
+		// Écrire dans le fichiers le messages
+		string formattedMsg = writeMessageToFile(msgFile, msg.sender, msg.message);
+
+		// Convert to char*
+		char * formattedMsgChar = new char[formattedMsg.length() + 1];
+		strcpy(formattedMsgChar, formattedMsg.c_str());
+
+		// Ajouter le message aux 15 derniers msgs
+		last15Messages->push_back({ msg.sender, formattedMsgChar });
+		if (last15Messages->size() > 15)
+			last15Messages->pop_front();
+
 		for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ) {
 			// Verifier que ce n'est pas le meme client qui a envoye le message
-			if (msg.sender == it->sd) {
+			if (msg.sender.sd == it->sd) {
 				it++;
 				continue;
 			}
 
 			int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
-
+			// TODO: Remplacer nThreadId par username
 			if (iSendResult == SOCKET_ERROR) {
 				printf("send failed with error: %d\n", WSAGetLastError());
 				cout << "Client " << it->nThreadID << " a quitte" << endl;
@@ -442,7 +478,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 	return 1;
 	}*/
 
-
+	msgFile.close();
 	delete[] clients;
 	//closesocket(sd);
 	//WSACleanup();
