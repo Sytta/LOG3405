@@ -359,24 +359,32 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			nouveauxClients->pop();			
 		}
 
-		// Envoyer les messages a tous les clients sauf a celui qui l'a envoye
-		while (!messageQueue->empty()) {
-			Message msg = messageQueue->front();
-			for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ++it) {
-				// Verifier que ce n'est pas le meme client qui a envoye le message
-				if (msg.sender != it->sd) {
-					int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
-					if (iSendResult == SOCKET_ERROR) {
-						printf("send failed with error: %d\n", WSAGetLastError());
-						cout << "Client " << it->nThreadID << " a quitte" << endl;
-						it = clients->erase(it);
-					}
-				}
-			}
-			
-			messageQueue->pop();
+		// Aller au prochaine itération si aucun message
+		if (messageQueue->empty()) {
+			continue;
 		}
-		
+
+		// Envoyer un message a tout le monde sauf le client qui l'a envoyé
+		Message msg = messageQueue->front();
+		for (std::vector<ClientInfo>::iterator it = clients->begin(); it != clients->end(); ) {
+			// Verifier que ce n'est pas le meme client qui a envoye le message
+			if (msg.sender == it->sd) {
+				continue;
+			}
+
+			int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
+
+			if (iSendResult == SOCKET_ERROR) {
+				printf("send failed with error: %d\n", WSAGetLastError());
+				cout << "Client " << it->nThreadID << " a quitte" << endl;
+				it = clients->erase(it);
+			} else {
+				// Incrémenter si le client n'a pas été effacé (erase() retourne une itérateur qui pointe déjà vers le prochain)
+				it++;
+			}
+		}
+			
+		messageQueue->pop();	
 	}
 
 	// Shut down the socket
