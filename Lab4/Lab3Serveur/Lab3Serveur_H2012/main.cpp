@@ -34,6 +34,12 @@ typedef struct Message {
 	char* message;
 };
 
+typedef struct LoggedMessage {
+	string username;
+	string IP;
+	char* message;
+};
+
 // External functions
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
@@ -123,7 +129,7 @@ std::vector<ClientInfo> *clients = new std::vector<ClientInfo>;
 std::queue<Message> *messageQueue = new std::queue<Message>();
 
 // Deque to save the last 15 messages
-std::deque<Message> *last15Messages = new std::deque<Message>();
+std::deque<LoggedMessage> *last15Messages = new std::deque<LoggedMessage>();
 
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
 // A function similar in spirit to Unix's perror() that tacks a canned 
@@ -410,7 +416,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		while (!nouveauxClients->empty()) {
 			ClientInfo nv = nouveauxClients->front();
 			// Envoyer les 15 derniers messages
-			for (std::deque<Message>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
+			for (std::deque<LoggedMessage>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
 				int iSendResult = send(nv.sd, it->message, strlen(it->message), 0);
 
 				if (iSendResult == SOCKET_ERROR) {
@@ -439,9 +445,14 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		// Convert to char*
 		char * formattedMsgChar = new char[formattedMsg.length() + 1];
 		strcpy(formattedMsgChar, formattedMsg.c_str());
+		
+		// TODO: replace by username 
+		std::stringstream sstr;
+		sstr << msg.sender.nThreadID;
+		std::string str = sstr.str();
 
 		// Ajouter le message aux 15 derniers msgs
-		last15Messages->push_back({ msg.sender, formattedMsgChar });
+		last15Messages->push_back({ str, msg.sender.IP, formattedMsgChar });
 		if (last15Messages->size() > 15)
 			last15Messages->pop_front();
 
