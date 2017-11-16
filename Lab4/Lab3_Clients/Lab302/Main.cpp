@@ -12,6 +12,8 @@
 
 SOCKET leSocket;
 
+#define LONGEUR_MSG 200
+
 // External functions
 extern DWORD WINAPI MessageRecvHandler(void* sd_);
 extern bool isValidIP(char* IP);
@@ -22,7 +24,7 @@ int __cdecl main(int argc, char **argv)
     struct addrinfo *result = NULL,
                     *ptr = NULL,
                     hints;
-    char motEnvoye[200];
+    char motEnvoye[LONGEUR_MSG];
 	int iResult;
 
 	//--------------------------------------------
@@ -123,7 +125,7 @@ int __cdecl main(int argc, char **argv)
 	}
 
 	// Authentification avec le serveur
-	char username[200];
+	char username[LONGEUR_MSG];
 	std::cout << "username: ";
 	gets_s(username);
 	iResult = send(leSocket, username, strlen(username) + 1, 0);
@@ -135,7 +137,7 @@ int __cdecl main(int argc, char **argv)
 		getchar();
 		return 1;
 	}
-	char password[200];
+	char password[LONGEUR_MSG];
 	std::cout << "password: ";
 	gets_s(password);
 	iResult = send(leSocket, password, strlen(password) + 1, 0);
@@ -149,9 +151,9 @@ int __cdecl main(int argc, char **argv)
 	}
 
 	// Attendre la réponse du serveur
-	char readBuffer[200];
+	char readBuffer[LONGEUR_MSG + 1];
 	int readBytes;
-	readBytes = recv(leSocket, readBuffer, 200, 0);
+	readBytes = recv(leSocket, readBuffer, LONGEUR_MSG, 0);
 	if (readBytes > 0) {
 		// Accepter ou rejeter le client selon la réponse du serveur
 		bool connectionAccepted = (int) readBuffer[0] - 48;  // Conversion inspired by : https://stackoverflow.com/questions/27021039/how-to-convert-a-char-numeric-0-9-to-int-without-getnumericalvalue
@@ -244,10 +246,10 @@ bool isValidIP(char *IP)
 DWORD WINAPI MessageRecvHandler(void* sd_) 
 {
 	int iResult;
-	char motRecu[200];
+	char motRecu[LONGEUR_MSG + 1];
 
 	while (true) {
-		iResult = recv(leSocket, motRecu, 200, 0);
+		iResult = recv(leSocket, motRecu, LONGEUR_MSG, 0);
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);
 			motRecu[iResult] = '\0';

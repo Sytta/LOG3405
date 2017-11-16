@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <ctime>
 #include <sstream>
+#include <chrono>
 
 #define MAX_MSG_LEN_BYTES 200
 #define USERS_FILENAME "../utilisateurs.txt"
@@ -452,6 +453,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			// Envoyer les 15 derniers messages
 			for (std::deque<LoggedMessage>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
 				int iSendResult = send(nv.sd, it->message, strlen(it->message), 0);
+				Sleep(10); // Eviter d'envoyer trop vite pour avoir du beau formattage
 
 				if (iSendResult == SOCKET_ERROR) {
 					printf("send failed with error: %d\n", WSAGetLastError());
