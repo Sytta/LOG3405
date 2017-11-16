@@ -126,55 +126,57 @@ int __cdecl main(int argc, char **argv)
 
 	// Authentification avec le serveur
 	char username[LONGEUR_MSG];
-	std::cout << "username: ";
-	gets_s(username);
-	iResult = send(leSocket, username, strlen(username) + 1, 0);
-	if (iResult == SOCKET_ERROR) {
-		printf("Erreur du send: %d\n", WSAGetLastError());
-		closesocket(leSocket);
-		WSACleanup();
-		printf("Appuyez une touche pour finir\n");
-		getchar();
-		return 1;
-	}
 	char password[LONGEUR_MSG];
-	std::cout << "password: ";
-	gets_s(password);
-	iResult = send(leSocket, password, strlen(password) + 1, 0);
-	if (iResult == SOCKET_ERROR) {
-		printf("Erreur du send: %d\n", WSAGetLastError());
-		closesocket(leSocket);
-		WSACleanup();
-		printf("Appuyez une touche pour finir\n");
-		getchar();
-		return 1;
-	}
+	bool connectionAccepted = false;
 
-	// Attendre la réponse du serveur
-	char readBuffer[LONGEUR_MSG + 1];
-	int readBytes;
-	readBytes = recv(leSocket, readBuffer, LONGEUR_MSG, 0);
-	if (readBytes > 0) {
-		// Accepter ou rejeter le client selon la réponse du serveur
-		bool connectionAccepted = (int) readBuffer[0] - 48;  // Conversion inspired by : https://stackoverflow.com/questions/27021039/how-to-convert-a-char-numeric-0-9-to-int-without-getnumericalvalue
-		if (!connectionAccepted) {
-			// Shutdown client
-			printf("Erreur d'authentification.\n");
+	do {
+		std::cout << "username: ";
+		gets_s(username);
+		iResult = send(leSocket, username, strlen(username) + 1, 0);
+		if (iResult == SOCKET_ERROR) {
+			printf("Erreur du send: %d\n", WSAGetLastError());
 			closesocket(leSocket);
 			WSACleanup();
 			printf("Appuyez une touche pour finir\n");
 			getchar();
 			return 1;
 		}
-	} else {
-		// Erreur : Fermer la connexion
-		printf("Erreur de connexion au serveur.");
-		closesocket(leSocket);
-		WSACleanup();
-		printf("Appuyez une touche pour finir\n");
-		getchar();
-		return 1;
-	}
+
+		std::cout << "password: ";
+		gets_s(password);
+		iResult = send(leSocket, password, strlen(password) + 1, 0);
+		if (iResult == SOCKET_ERROR) {
+			printf("Erreur du send: %d\n", WSAGetLastError());
+			closesocket(leSocket);
+			WSACleanup();
+			printf("Appuyez une touche pour finir\n");
+			getchar();
+			return 1;
+		}
+
+		// Attendre la réponse du serveur
+		char readBuffer[LONGEUR_MSG + 1];
+		int readBytes;
+		readBytes = recv(leSocket, readBuffer, LONGEUR_MSG, 0);
+		if (readBytes > 0) {
+			// Accepter ou rejeter le client selon la réponse du serveur
+			connectionAccepted = (int)readBuffer[0] - 48;  // Conversion inspired by : https://stackoverflow.com/questions/27021039/how-to-convert-a-char-numeric-0-9-to-int-without-getnumericalvalue
+			if (!connectionAccepted) {
+				// Shutdown client
+				printf("Erreur d'authentification. Veuillez recommencer.\n");
+			}
+		}
+		else {
+			// Erreur : Fermer la connexion
+			printf("Erreur de connexion au serveur.");
+			closesocket(leSocket);
+			WSACleanup();
+			printf("Appuyez une touche pour finir\n");
+			getchar();
+			return 1;
+		}
+
+	} while (!connectionAccepted);
 
 	printf("Connecte au serveur %s:%s\n\n", host, port);
     freeaddrinfo(result);
@@ -190,11 +192,10 @@ int __cdecl main(int argc, char **argv)
 	std::cout << "Enjoy votre chat!" << std::endl;
 	std::cout << "Me: ";
 	gets_s(motEnvoye);
-	//printf("Le mot envoye est: %s\n", motEnvoye);
 
+	// Envoyer des messages au serveur tant que le mssage n'est pas vide
 	while (std::string(motEnvoye).size() > 0 ) {
 		
-		// Envoyer le mot au serveur
 		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
 		if (iResult == SOCKET_ERROR) {
 			printf("Erreur du send: %d\n", WSAGetLastError());
@@ -205,14 +206,6 @@ int __cdecl main(int argc, char **argv)
 			return 1;
 		}
 
-		// Terminer le thread pour recevoir des mesages
-		//ExitThread(msRecvTheadID);
-
-		//printf("Nombre d'octets envoyes : %ld\n", iResult);
-
-		//------------------------------
-		// Maintenant, on va recevoir l' information envoyée par le serveur
-		//printf("Saisir un mot de 7 lettres pour envoyer au serveur: ");
 		std::cout << "Me: ";
 		gets_s(motEnvoye);
 	}

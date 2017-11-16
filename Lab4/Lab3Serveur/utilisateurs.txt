@@ -2,3 +2,6 @@ yawen;12345
 erica;whee
 yano;12345
 yw;lol
+mama;lol
+moi;toi
+wow;lol

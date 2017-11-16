@@ -26,7 +26,7 @@ using namespace std;
 
 typedef struct ClientInfo {
 	SOCKET sd;
-	DWORD nThreadID; // TODO: remplacer par username
+	string username;
 	string IP;
 };
 
@@ -47,7 +47,7 @@ extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern bool isValidIP(char *IP);
 extern string writeMessageToFile(ofstream& msgFile, ClientInfo sender, string msg);
 extern void parseExistingUsers();
-extern bool verifyUser(SOCKET sd);
+extern bool verifyUser(SOCKET sd, string username, string password);
 
 // List of Winsock error constants mapped to an interpretation string.
 // Note that this list must remain sorted by the error constants'
@@ -262,28 +262,54 @@ int main(void)
 		// Create a SOCKET for accepting incoming requests.
 		// Accept the connection.
 		SOCKET sd = accept(ServerSocket, (sockaddr*)&sinRemote, &nAddrSize);
-		if (sd != INVALID_SOCKET && verifyUser(sd)) {
-			string IP = std::string(inet_ntoa(sinRemote.sin_addr)) + " : " + std::to_string(ntohs(sinRemote.sin_port));
-			cout << "Connection acceptee De : " <<
-                    inet_ntoa(sinRemote.sin_addr) << ":" <<
-                    ntohs(sinRemote.sin_port) << "." <<
-                    endl;
 
-			DWORD nThreadID;
-			// Creer le producteur
-            CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
-
-			// Creer le ClientInfo
-			// TODO: put username here
-			ClientInfo client = { sd, nThreadID, IP };
-			nouveauxClients->push(client);
-
-        } else {
-            cerr << WSAGetLastErrorMessage("Echec d'une connection.") << 
-                    endl;
+		if (sd == INVALID_SOCKET) {
+			cerr << WSAGetLastErrorMessage("Echec d'une connection.") <<
+				endl;
 			closesocket(sd);
-			//WSACleanup();  // Only do this when close the server. Don't do this when close each client
-        }
+		}
+
+		// Get username and password from user
+		string password;
+		string username;
+		bool noExit = true; // test that the user did not quit when entering password
+		do {
+			char readBuffer[200];
+			int readBytes;
+
+			readBytes = recv(sd, readBuffer, 200, 0);
+			if (readBytes == 0) {
+				cout << "Error receiving username." << endl;
+				closesocket(sd);
+				noExit = false; // Do not create a thread
+			}
+			username = readBuffer;
+
+			readBytes = recv(sd, readBuffer, 200, 0);
+			if (readBytes == 0) {
+				cout << "Error receiving password." << endl;
+				closesocket(sd);
+				noExit = false; // Do not create a thread
+			}
+			password = readBuffer;
+
+		} while (!verifyUser(sd, username, password) && noExit);
+
+		// Confirmation
+		string IP = std::string(inet_ntoa(sinRemote.sin_addr)) + " : " + std::to_string(ntohs(sinRemote.sin_port));
+		cout << "Connection acceptee De : " <<
+                inet_ntoa(sinRemote.sin_addr) << ":" <<
+                ntohs(sinRemote.sin_port) << "." <<
+                endl;
+
+		DWORD nThreadID;
+		// Creer le producteur
+        CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
+
+		// Creer le ClientInfo
+		// TODO: put username here
+		ClientInfo client = { sd, username, IP };
+		nouveauxClients->push(client);
     }
 
 	delete[] nouveauxClients;
@@ -315,24 +341,7 @@ void parseExistingUsers() {
 	userFile.close();
 }
 
-bool verifyUser(SOCKET sd) {
-	// Get username and password from user
-	string username;
-	string password;
-	char readBuffer[200];
-	int readBytes;
-
-	readBytes = recv(sd, readBuffer, 200, 0);
-	if (readBytes == 0) {
-		cout << "Error receiving username." << endl;
-	}
-	username = readBuffer;
-
-	readBytes = recv(sd, readBuffer, 200, 0);
-	if (readBytes == 0) {
-		cout << "Error receiving password." << endl;
-	}
-	password = readBuffer;
+bool verifyUser(SOCKET sd, string username, string password) {
 
 	// Check if user exists in file
 	int iResult;
@@ -388,7 +397,7 @@ string writeMessageToFile(ofstream& msgFile, ClientInfo sender , string msg) {
 	// TODO: Write to file, change str to username
 	// Get rid of this after having username
 	std::stringstream sstr;
-	sstr << sender.nThreadID;
+	sstr << sender.username;
 	std::string str = sstr.str();
 
 	string log = "[" + str + " - " + sender.IP + " - " + currentTime + "]: " + msg;
@@ -457,13 +466,13 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 
 				if (iSendResult == SOCKET_ERROR) {
 					printf("send failed with error: %d\n", WSAGetLastError());
-					cout << "Client " << nv.nThreadID << " a quitte" << endl;
+					cout << "Client " << nv.username << " a quitte" << endl;
 				}
 			}
 
 			// Ajout dans la liste des clients
 			clients->push_back(nv);
-			std::cout << "Client" << nouveauxClients->front().nThreadID << "ajoute" << endl;
+			std::cout << "Client" << nouveauxClients->front().username << "ajoute" << endl;
 			nouveauxClients->pop();			
 		}
 
@@ -481,14 +490,9 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		// Convert to char*
 		char * formattedMsgChar = new char[formattedMsg.length() + 1];
 		strcpy(formattedMsgChar, formattedMsg.c_str());
-		
-		// TODO: replace by username 
-		std::stringstream sstr;
-		sstr << msg.sender.nThreadID;
-		std::string str = sstr.str();
 
 		// Ajouter le message aux 15 derniers msgs
-		last15Messages->push_back({ str, msg.sender.IP, formattedMsgChar });
+		last15Messages->push_back({ msg.sender.username, msg.sender.IP, formattedMsgChar });
 		if (last15Messages->size() > 15)
 			last15Messages->pop_front();
 
@@ -500,10 +504,9 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			}
 
 			int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
-			// TODO: Remplacer nThreadId par username
 			if (iSendResult == SOCKET_ERROR) {
 				printf("send failed with error: %d\n", WSAGetLastError());
-				cout << "Client " << it->nThreadID << " a quitte" << endl;
+				cout << "Client " << it->username << " a quitte" << endl;
 				it = clients->erase(it);
 			} else {
 				// Incrémenter si le client n'a pas été effacé (erase() retourne une itérateur qui pointe déjà vers le prochain)
