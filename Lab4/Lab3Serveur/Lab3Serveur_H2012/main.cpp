@@ -503,7 +503,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 				continue;
 			}
 
-			int iSendResult = send(it->sd, msg.message, strlen(msg.message), 0);
+			int iSendResult = send(it->sd, formattedMsgChar, strlen(formattedMsgChar), 0);
 			if (iSendResult == SOCKET_ERROR) {
 				printf("send failed with error: %d\n", WSAGetLastError());
 				cout << "Client " << it->username << " a quitte" << endl;

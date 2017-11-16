@@ -190,7 +190,7 @@ int __cdecl main(int argc, char **argv)
 	//-----------------------------
 
 	std::cout << "Enjoy votre chat!" << std::endl;
-	std::cout << "Me: ";
+	//std::cout << "Me: ";
 	gets_s(motEnvoye);
 
 	// Envoyer des messages au serveur tant que le mssage n'est pas vide
@@ -206,7 +206,7 @@ int __cdecl main(int argc, char **argv)
 			return 1;
 		}
 
-		std::cout << "Me: ";
+		//std::cout << "Me: ";
 		gets_s(motEnvoye);
 	}
 
@@ -246,7 +246,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);
 			motRecu[iResult] = '\0';
-			printf("Other: %s\n", motRecu);
+			printf("%s\n", motRecu);
 		}
 		else {
 			printf("Erreur de reception : %d\n", WSAGetLastError());
