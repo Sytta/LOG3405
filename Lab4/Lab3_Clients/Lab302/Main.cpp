@@ -122,6 +122,58 @@ int __cdecl main(int argc, char **argv)
         return 1;
 	}
 
+	// Authentification avec le serveur
+	char username[200];
+	std::cout << "username: ";
+	gets_s(username);
+	iResult = send(leSocket, username, strlen(username) + 1, 0);
+	if (iResult == SOCKET_ERROR) {
+		printf("Erreur du send: %d\n", WSAGetLastError());
+		closesocket(leSocket);
+		WSACleanup();
+		printf("Appuyez une touche pour finir\n");
+		getchar();
+		return 1;
+	}
+	char password[200];
+	std::cout << "password: ";
+	gets_s(password);
+	iResult = send(leSocket, password, strlen(password) + 1, 0);
+	if (iResult == SOCKET_ERROR) {
+		printf("Erreur du send: %d\n", WSAGetLastError());
+		closesocket(leSocket);
+		WSACleanup();
+		printf("Appuyez une touche pour finir\n");
+		getchar();
+		return 1;
+	}
+
+	// Attendre la réponse du serveur
+	char readBuffer[200];
+	int readBytes;
+	readBytes = recv(leSocket, readBuffer, 200, 0);
+	if (readBytes > 0) {
+		// Accepter ou rejeter le client selon la réponse du serveur
+		bool connectionAccepted = (int) readBuffer[0] - 48;  // Conversion inspired by : https://stackoverflow.com/questions/27021039/how-to-convert-a-char-numeric-0-9-to-int-without-getnumericalvalue
+		if (!connectionAccepted) {
+			// Shutdown client
+			printf("Erreur d'authentification.\n");
+			closesocket(leSocket);
+			WSACleanup();
+			printf("Appuyez une touche pour finir\n");
+			getchar();
+			return 1;
+		}
+	} else {
+		// Erreur : Fermer la connexion
+		printf("Erreur de connexion au serveur.");
+		closesocket(leSocket);
+		WSACleanup();
+		printf("Appuyez une touche pour finir\n");
+		getchar();
+		return 1;
+	}
+
 	printf("Connecte au serveur %s:%s\n\n", host, port);
     freeaddrinfo(result);
 

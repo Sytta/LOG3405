@@ -46,6 +46,7 @@ extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern bool isValidIP(char *IP);
 extern string writeMessageToFile(ofstream& msgFile, ClientInfo sender, string msg);
 extern void parseExistingUsers();
+extern bool verifyUser(SOCKET sd);
 
 // List of Winsock error constants mapped to an interpretation string.
 // Note that this list must remain sorted by the error constants'
@@ -260,7 +261,7 @@ int main(void)
 		// Create a SOCKET for accepting incoming requests.
 		// Accept the connection.
 		SOCKET sd = accept(ServerSocket, (sockaddr*)&sinRemote, &nAddrSize);
-		if (sd != INVALID_SOCKET /*&& verifyUser(sd)*/) {
+		if (sd != INVALID_SOCKET && verifyUser(sd)) {
 			string IP = std::string(inet_ntoa(sinRemote.sin_addr)) + " : " + std::to_string(ntohs(sinRemote.sin_port));
 			cout << "Connection acceptee De : " <<
                     inet_ntoa(sinRemote.sin_addr) << ":" <<
@@ -280,7 +281,7 @@ int main(void)
             cerr << WSAGetLastErrorMessage("Echec d'une connection.") << 
                     endl;
 			closesocket(sd);
-			WSACleanup();
+			//WSACleanup();  // Only do this when close the server. Don't do this when close each client
         }
     }
 
@@ -314,23 +315,56 @@ void parseExistingUsers() {
 }
 
 bool verifyUser(SOCKET sd) {
-	// TODO Get username and password from user
-	string username = "yano";
-	string password = "123";
+	// Get username and password from user
+	string username;
+	string password;
+	char readBuffer[200];
+	int readBytes;
+
+	readBytes = recv(sd, readBuffer, 200, 0);
+	if (readBytes == 0) {
+		cout << "Error receiving username." << endl;
+	}
+	username = readBuffer;
+
+	readBytes = recv(sd, readBuffer, 200, 0);
+	if (readBytes == 0) {
+		cout << "Error receiving password." << endl;
+	}
+	password = readBuffer;
 
 	// Check if user exists in file
+	int iResult;
 	auto it = users.find(username);
 	if (it != users.end()) {
 		// Verify the password
-		cout << "user found" << endl;
-		return (it->second == password) ? true : false;
+		if (it->second == password) {
+			char serverResponse[2] = "1";
+			iResult = send(sd, serverResponse, strlen(serverResponse) + 1 , 0);
+			if (iResult == SOCKET_ERROR) {
+				cout << "Error sending authentification response to socket" << endl;
+			}
+			return true;
+		} else {
+			char serverResponse[2] = "0";
+			iResult = send(sd, serverResponse, strlen(serverResponse) + 1, 0);
+			if (iResult == SOCKET_ERROR) {
+				cout << "Error sending authentification response to socket" << endl;
+			}
+			return false;
+		}
 	}
 	else {
 		// Create the user entry
 		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
 		users.insert(pair<string, string>(username, password));
-		userFile << username << ";" << password << endl;
+		userFile << username << ";" << password << endl;  // IMPORTANT : The \n needs to be there before the end of the file (endl is necessary for correct parsing)
 		userFile.close();
+		char serverResponse[2] = "1";
+		iResult = send(sd, serverResponse, strlen(serverResponse) + 1, 0);
+		if (iResult == SOCKET_ERROR) {
+			cout << "Error sending authentification response to socket" << endl;
+		}
 		return true;
 	}
 }
