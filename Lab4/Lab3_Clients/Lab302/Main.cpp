@@ -192,7 +192,7 @@ int __cdecl main(int argc, char **argv)
 	gets_s(motEnvoye);
 	//printf("Le mot envoye est: %s\n", motEnvoye);
 
-	while (std::string(motEnvoye) != "exit") {
+	while (std::string(motEnvoye).size() > 0 ) {
 		
 		// Envoyer le mot au serveur
 		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
