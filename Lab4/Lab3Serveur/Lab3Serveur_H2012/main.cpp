@@ -220,6 +220,8 @@ int main(void)
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(host, tmp.c_str());
+		if (!isValidIP(host))
+			std::cout << "L'adresse IP est invalide! Reessayez s'il-vous-plait." << std::endl;
 	} while (!isValidIP(host));
 	
 	do {
@@ -228,6 +230,8 @@ int main(void)
 		std::cin >> tmp;
 		std::cin.get();
 		port = std::stoi(tmp);
+		if (port > 5050 || port < 5000)
+			std::cout << "Le port est invalide! Le port doit etre entre 5000 et 5050. Reessayez s'il-vous-plait." << std::endl;
 	} while (port > 5050 || port < 5000);
     
 	// Recuperation de l'adresse locale
