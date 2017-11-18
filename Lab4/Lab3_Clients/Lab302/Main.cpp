@@ -63,6 +63,8 @@ int __cdecl main(int argc, char **argv)
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(host, tmp.c_str());
+		if (!isValidIP(host))
+			std::cout << "L'adresse IP est invalide! Reessayez s'il-vous-plait." << std::endl;
 	} while (!isValidIP(host));
 
 	do {
@@ -71,6 +73,8 @@ int __cdecl main(int argc, char **argv)
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(port, tmp.c_str());
+		if (std::stoi(port) > 5050 || std::stoi(port) < 5000)
+			std::cout << "Le port est invalide! Le port doit etre entre 5000 et 5050. Reessayez s'il-vous-plait." << std::endl;
 	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);
 
 	//For local testing
