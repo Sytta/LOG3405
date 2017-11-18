@@ -8,3 +8,5 @@ wow;lol
 ;
 lol;lol
 pasd'erreur?;hmm
+hi;lol
+alright;good

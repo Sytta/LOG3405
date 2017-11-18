@@ -14,6 +14,7 @@
 #include <ctime>
 #include <sstream>
 #include <chrono>
+#include <mutex>
 
 #define MAX_MSG_LEN_BYTES 200
 #define USERS_FILENAME "../utilisateurs.txt"
@@ -122,16 +123,23 @@ static struct ErrorEntry {
 const int kNumMessages = sizeof(gaErrorList) / sizeof(ErrorEntry);
 
 // Queue FIFO pour les nouvellles connexions
+std::mutex nvClientsMutex;
 std::queue<ClientInfo> *nouveauxClients = new std::queue<ClientInfo>();
 
 // Liste des clients connectes
 std::vector<ClientInfo> *clients = new std::vector<ClientInfo>;
 
 // Queue FIFO pour contenir les messages
+std::mutex msgWritingMutex;
 std::queue<Message> *messageQueue = new std::queue<Message>();
 
 // Deque to save the last 15 messages
 std::deque<LoggedMessage> *last15Messages = new std::deque<LoggedMessage>();
+
+// Gestion des utilisateurs et des mots de passe
+std::mutex userFileMutex;
+fstream userFile;
+map<string, string> users;
 
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
 // A function similar in spirit to Unix's perror() that tacks a canned 
@@ -230,7 +238,7 @@ int main(void)
 	service.sin_addr.s_addr = inet_addr(ip);
     service.sin_port = htons(port);
 
-    if (bind(ServerSocket, (SOCKADDR*) &service, sizeof(service)) == SOCKET_ERROR) {
+	if (::bind(ServerSocket, (SOCKADDR*) &service, sizeof(service)) == SOCKET_ERROR) {
 		cerr << WSAGetLastErrorMessage("bind() failed.") << endl;
 		closesocket(ServerSocket);
 		WSACleanup();
@@ -294,9 +302,6 @@ bool isValidIP(char *IP)
 	return result != 0;
 }
 
-// Gestion des utilisateurs et des mots de passe
-fstream userFile;
-map<string, string> users;
 void parseExistingUsers() {
 	string username;
 	string password;
@@ -322,6 +327,7 @@ bool verifyUser(SOCKET sd, string username, string password) {
 			iResult = send(sd, serverResponse, strlen(serverResponse) + 1 , 0);
 			if (iResult == SOCKET_ERROR) {
 				cout << "Error sending authentification response to socket" << endl;
+				return false;
 			}
 			return true;
 		} else {
@@ -335,10 +341,16 @@ bool verifyUser(SOCKET sd, string username, string password) {
 	}
 	else {
 		// Create the user entry
-		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
+
+		/// Critical section
+		userFileMutex.lock();
+		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  
 		users.insert(pair<string, string>(username, password));
 		userFile << username << ";" << password << endl;  // IMPORTANT : The \n needs to be there before the end of the file (endl is necessary for correct parsing)
 		userFile.close();
+		userFileMutex.unlock();
+		/// End critical section
+
 		char serverResponse[2] = "1";
 		iResult = send(sd, serverResponse, strlen(serverResponse) + 1, 0);
 		if (iResult == SOCKET_ERROR) {
@@ -400,7 +412,7 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
-			cout << "Error receiving username." << endl;
+			cout << "Error receiving username. Closing client connection." << endl;
 			closesocket(sd);
 			return 0;
 		}
@@ -409,7 +421,7 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
-			cout << "Error receiving password." << endl;
+			cout << "Error receiving password. Closing client connection." << endl;
 			closesocket(sd);
 			return 0;
 		}
@@ -418,9 +430,13 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	} while (!verifyUser(sd, username, password));
 
 	// Creer le ClientInfo
-	// TODO: put username here
 	ClientInfo client = { sd, username, IP };
+
+	/// Critical section
+	nvClientsMutex.lock();
 	nouveauxClients->push(client);
+	nvClientsMutex.unlock();
+	/// End critical section
 
 	do {
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
@@ -428,11 +444,15 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 			// Change socket to IP as sender
 			ClientInfo sender = getClientFromSocket(sd);
 			Message msg = { sender, readBuffer };
+
+			/// Critical section
+			msgWritingMutex.lock();
 			messageQueue->push(msg);
-			//std::cout << GetCurrentThreadId() << " : " << readBuffer << std::endl;
+			msgWritingMutex.unlock();
+			/// End critical section
 
 		} else {
-			cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
+			//cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
 			cout << "Fermeture du client." << endl;
 			break;
 		}
@@ -442,11 +462,9 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	if (ishutDown == SOCKET_ERROR) {
 		printf("shutdown failed with error: %d\n", WSAGetLastError());
 		closesocket(ishutDown);
-		//WSACleanup();  // Only do this when close the server. Don't do this when close each client
 		return 1;
 	}
 	closesocket(sd);
-	//WSACleanup();  // Only do this when close the server. Don't do this when close each client
 	return 0;
 }
 
@@ -461,6 +479,9 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 
 	while (true) {
 		// Ajouter les nouveaux clients et envoyer les 15 derniers messages
+
+		///Critical section
+		nvClientsMutex.lock();
 		while (!nouveauxClients->empty()) {
 			ClientInfo nv = nouveauxClients->front();
 			// Envoyer les 15 derniers messages
@@ -473,12 +494,13 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 					cout << "Client " << nv.username << " a quitte" << endl;
 				}
 			}
-
 			// Ajout dans la liste des clients
 			clients->push_back(nv);
 			std::cout << "Client" << nouveauxClients->front().username << "ajoute" << endl;
-			nouveauxClients->pop();			
+			nouveauxClients->pop();		  
 		}
+		nvClientsMutex.unlock();
+		/// End critical section
 
 		// Aller au prochaine itération si aucun message
 		if (messageQueue->empty()) {

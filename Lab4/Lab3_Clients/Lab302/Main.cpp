@@ -162,7 +162,6 @@ int __cdecl main(int argc, char **argv)
 			// Accepter ou rejeter le client selon la réponse du serveur
 			connectionAccepted = (int)readBuffer[0] - 48;  // Conversion inspired by : https://stackoverflow.com/questions/27021039/how-to-convert-a-char-numeric-0-9-to-int-without-getnumericalvalue
 			if (!connectionAccepted) {
-				// Shutdown client
 				printf("Erreur d'authentification. Veuillez recommencer.\n");
 			}
 		}
@@ -190,7 +189,6 @@ int __cdecl main(int argc, char **argv)
 	//-----------------------------
 
 	std::cout << "Enjoy votre chat!" << std::endl;
-	//std::cout << "Me: ";
 	gets_s(motEnvoye);
 
 	// Envoyer des messages au serveur tant que le mssage n'est pas vide
@@ -198,7 +196,8 @@ int __cdecl main(int argc, char **argv)
 		
 		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
 		if (iResult == SOCKET_ERROR) {
-			printf("Erreur du send: %d\n", WSAGetLastError());
+			//printf("Erreur du send: %d\n", WSAGetLastError());
+			std::cout << "Au revoir!" << std::endl;
 			closesocket(leSocket);
 			WSACleanup();
 			printf("Appuyez une touche pour finir\n");
@@ -206,7 +205,6 @@ int __cdecl main(int argc, char **argv)
 			return 1;
 		}
 
-		//std::cout << "Me: ";
 		gets_s(motEnvoye);
 	}
 
@@ -249,7 +247,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 			printf("%s\n", motRecu);
 		}
 		else {
-			printf("Erreur de reception : %d\n", WSAGetLastError());
+			//printf("Erreur de reception : %d\n", WSAGetLastError());
 			std::cout << "Au revoir!" << std::endl;
 			return 0;
 		}
