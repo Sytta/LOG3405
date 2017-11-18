@@ -269,34 +269,7 @@ int main(void)
 			closesocket(sd);
 		}
 
-		// Get username and password from user
-		string password;
-		string username;
-		bool noExit = true; // test that the user did not quit when entering password
-		do {
-			char readBuffer[200];
-			int readBytes;
-
-			readBytes = recv(sd, readBuffer, 200, 0);
-			if (readBytes == 0) {
-				cout << "Error receiving username." << endl;
-				closesocket(sd);
-				noExit = false; // Do not create a thread
-			}
-			username = readBuffer;
-
-			readBytes = recv(sd, readBuffer, 200, 0);
-			if (readBytes == 0) {
-				cout << "Error receiving password." << endl;
-				closesocket(sd);
-				noExit = false; // Do not create a thread
-			}
-			password = readBuffer;
-
-		} while (!verifyUser(sd, username, password) && noExit);
-
 		// Confirmation
-		string IP = std::string(inet_ntoa(sinRemote.sin_addr)) + " : " + std::to_string(ntohs(sinRemote.sin_port));
 		cout << "Connection acceptee De : " <<
                 inet_ntoa(sinRemote.sin_addr) << ":" <<
                 ntohs(sinRemote.sin_port) << "." <<
@@ -306,10 +279,6 @@ int main(void)
 		// Creer le producteur
         CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
 
-		// Creer le ClientInfo
-		// TODO: put username here
-		ClientInfo client = { sd, username, IP };
-		nouveauxClients->push(client);
     }
 
 	delete[] nouveauxClients;
@@ -413,13 +382,48 @@ string writeMessageToFile(ofstream& msgFile, ClientInfo sender , string msg) {
 
 DWORD WINAPI ClientMessageHandler(void* sd_)
 {
+	//Get IP adress
 	SOCKET sd = (SOCKET)sd_;
 
-	char readBuffer[200];
+	struct sockaddr_in client_ip;
+	socklen_t addr_size = sizeof(struct sockaddr_in);
+	int res = getpeername(sd, (struct sockaddr *)&client_ip, &addr_size);
+	string IP = std::string(inet_ntoa(client_ip.sin_addr)) + " : " + std::to_string(ntohs(client_ip.sin_port));
+
+	char readBuffer[MAX_MSG_LEN_BYTES] = "";
 	int readBytes;
 
+	// Get username and password from user
+	string password;
+	string username;
 	do {
-		readBytes = recv(sd, readBuffer, 200, 0);
+
+		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
+		if (readBytes <= 0) {
+			cout << "Error receiving username." << endl;
+			closesocket(sd);
+			return 0;
+		}
+		username = readBuffer;
+
+
+		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
+		if (readBytes <= 0) {
+			cout << "Error receiving password." << endl;
+			closesocket(sd);
+			return 0;
+		}
+		password = readBuffer;
+
+	} while (!verifyUser(sd, username, password));
+
+	// Creer le ClientInfo
+	// TODO: put username here
+	ClientInfo client = { sd, username, IP };
+	nouveauxClients->push(client);
+
+	do {
+		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes > 0) {
 			// Change socket to IP as sender
 			ClientInfo sender = getClientFromSocket(sd);
