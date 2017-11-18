@@ -54,11 +54,7 @@ int __cdecl main(int argc, char **argv)
     hints.ai_protocol = IPPROTO_TCP;  // Protocole utilisé par le serveur
 
 	// On indique le nom et le port du serveur auquel on veut se connecter
-	// TODO: Set using user input (IP and port for the server)
-	//char *host = "L4708-XX";
-	//char *host = "L4708-XX.lerb.polymtl.ca";
-	//char *host = "add_IP locale";
-	/*char host[15];
+	char host[15];
 	char port[5];
 
 	do {
@@ -75,11 +71,11 @@ int __cdecl main(int argc, char **argv)
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(port, tmp.c_str());
-	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);*/
+	} while (std::stoi(port) > 5050 || std::stoi(port) < 5000);
 
-	//char *host = "132.207.29.123";
-	char *host = "127.0.0.1";
-	char *port = "5040";
+	//For local testing
+	//char *host = "127.0.0.1";
+	//char *port = "5040";
 
 	// getaddrinfo obtient l'adresse IP du host donné
     iResult = getaddrinfo(host, port, &hints, &result);
@@ -125,8 +121,8 @@ int __cdecl main(int argc, char **argv)
 	}
 
 	// Authentification avec le serveur
-	char username[LONGEUR_MSG];
-	char password[LONGEUR_MSG];
+	char username[LONGEUR_MSG] = "";
+	char password[LONGEUR_MSG] = "";
 	bool connectionAccepted = false;
 
 	do {
@@ -155,7 +151,7 @@ int __cdecl main(int argc, char **argv)
 		}
 
 		// Attendre la réponse du serveur
-		char readBuffer[LONGEUR_MSG + 1];
+		char readBuffer[LONGEUR_MSG + 1] = "";
 		int readBytes;
 		readBytes = recv(leSocket, readBuffer, LONGEUR_MSG, 0);
 		if (readBytes > 0) {
@@ -197,7 +193,7 @@ int __cdecl main(int argc, char **argv)
 		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
 		if (iResult == SOCKET_ERROR) {
 			//printf("Erreur du send: %d\n", WSAGetLastError());
-			std::cout << "Au revoir!" << std::endl;
+			std::cout << "Au revoir! " << std::endl;
 			closesocket(leSocket);
 			WSACleanup();
 			printf("Appuyez une touche pour finir\n");
@@ -237,7 +233,7 @@ bool isValidIP(char *IP)
 DWORD WINAPI MessageRecvHandler(void* sd_) 
 {
 	int iResult;
-	char motRecu[LONGEUR_MSG + 1];
+	char motRecu[LONGEUR_MSG + 1] = "";
 
 	while (true) {
 		iResult = recv(leSocket, motRecu, LONGEUR_MSG, 0);
@@ -248,7 +244,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 		}
 		else {
 			//printf("Erreur de reception : %d\n", WSAGetLastError());
-			std::cout << "Au revoir!" << std::endl;
+			std::cout << "Au revoir! " << std::endl;
 			return 0;
 		}
 	}

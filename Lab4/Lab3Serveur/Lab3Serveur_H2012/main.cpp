@@ -207,25 +207,28 @@ int main(void)
 	//----------------------
     // The sockaddr_in structure specifies the address family,
     // IP address, and port for the socket that is being bound.
-	int port=5040; // TODO: Set port using the user input
-	//char host[15];
+	// For local testing
+	//char *host = "127.0.0.1";
+	// int port = 5040;
 
-	/*do {
+	int port = 5040; 
+	char host[15] = "";
+
+	do {
 		std::string tmp;
 		std::cout << "Entrez l'adresse du serveur : ";
 		std::cin >> tmp;
 		std::cin.get();
 		strcpy(host, tmp.c_str());
-	} while (!isValidIP(host));*/
-	//char *host = "132.207.29.123";// TODO Remove this hardcoding (for debugging) 
-	char *host = "127.0.0.1";
-	/*do {
+	} while (!isValidIP(host));
+	
+	do {
 		std::string tmp;
 		std::cout << "Entrez le port du serveur : ";
 		std::cin >> tmp;
 		std::cin.get();
 		port = std::stoi(tmp);
-	} while (port > 5050 || port < 5000);*/
+	} while (port > 5050 || port < 5000);
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
@@ -496,7 +499,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			}
 			// Ajout dans la liste des clients
 			clients->push_back(nv);
-			std::cout << "Client" << nouveauxClients->front().username << "ajoute" << endl;
+			std::cout << "Client " << nouveauxClients->front().username << " ajoute" << endl;
 			nouveauxClients->pop();		  
 		}
 		nvClientsMutex.unlock();
