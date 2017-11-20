@@ -36,12 +36,6 @@ typedef struct Message {
 	char* message;
 };
 
-typedef struct LoggedMessage {
-	string username;
-	string IP;
-	char* message;
-};
-
 // External functions
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
