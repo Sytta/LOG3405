@@ -342,6 +342,7 @@ void readMessageLog() {
 	string message = "";
 
 	while(getline(msgFile, message)) {
+		message += "\n";
 		// Convertir en char*
 		char * messageChar = new char[message.length() + 1];
 		strcpy(messageChar, message.c_str());
@@ -354,7 +355,7 @@ void readMessageLog() {
 
 	// Imprimer les 15 messages dans le console
 	for (auto it = last15Messages->begin(); it != last15Messages->end(); it++) {
-		std::cout << *it << endl;
+		std::cout << *it;
 	}
 
 	msgFile.close();

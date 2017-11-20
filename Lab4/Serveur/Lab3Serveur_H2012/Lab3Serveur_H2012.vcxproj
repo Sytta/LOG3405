@@ -13,8 +13,8 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{88A1CB67-BCD1-4EE0-9D6C-252A74D4A9C6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Lab3Serveur_H2012</RootNamespace>
-    <ProjectName>Lab3Serveur_A2012</ProjectName>
+    <RootNamespace>Serveur</RootNamespace>
+    <ProjectName>Serveur</ProjectName>
     <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
