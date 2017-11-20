@@ -46,8 +46,9 @@ typedef struct LoggedMessage {
 extern DWORD WINAPI ClientMessageHandler(void* sd_) ;
 extern DWORD WINAPI MessageSendHandler(void* sd_);
 extern bool isValidIP(char *IP);
-extern string writeMessageToFile(ofstream& msgFile, ClientInfo sender, string msg);
+extern string writeMessageToFile(ClientInfo sender, string msg);
 extern void parseExistingUsers();
+extern void readMessageLog();
 extern bool verifyUser(SOCKET sd, string username, string password);
 
 // List of Winsock error constants mapped to an interpretation string.
@@ -134,11 +135,13 @@ std::mutex msgWritingMutex;
 std::queue<Message> *messageQueue = new std::queue<Message>();
 
 // Deque to save the last 15 messages
-std::deque<LoggedMessage> *last15Messages = new std::deque<LoggedMessage>();
+std::deque<char*> *last15Messages = new std::deque<char*>();
 
 // Gestion des utilisateurs et des mots de passe
 std::mutex userFileMutex;
+char delimiter = '\u03B4';
 fstream userFile;
+fstream msgFile;
 map<string, string> users;
 
 //// WSAGetLastErrorMessage ////////////////////////////////////////////
@@ -223,16 +226,23 @@ int main(void)
 		if (!isValidIP(host))
 			std::cout << "L'adresse IP est invalide! Reessayez s'il-vous-plait." << std::endl;
 	} while (!isValidIP(host));
+
+	bool portIsValid = false;
 	
 	do {
 		std::string tmp;
 		std::cout << "Entrez le port du serveur : ";
 		std::cin >> tmp;
 		std::cin.get();
-		port = std::stoi(tmp);
-		if (port > 5050 || port < 5000)
+		if (tmp.find_first_not_of("0123456789") != std::string::npos || std::stoi(tmp) > 5050 || std::stoi(tmp) < 5000) {
 			std::cout << "Le port est invalide! Le port doit etre entre 5000 et 5050. Reessayez s'il-vous-plait." << std::endl;
-	} while (port > 5050 || port < 5000);
+			portIsValid = false;
+		}
+		else {
+			portIsValid = true;
+			port = std::stoi(tmp);
+		}
+	} while (!portIsValid);
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
@@ -252,12 +262,9 @@ int main(void)
 		return 1;
 	}
 
-	// TODO: Creation d'un consommateur pour envoyer des messages
+	// Creation d'un consommateur pour envoyer des messages
 	DWORD msSenderThreadID;
 	CreateThread(0, 0, MessageSendHandler, NULL, 0, &msSenderThreadID);
-	
-	// Ouvrir et parser le contenu du fichier des utilisateurs et des mots de passe
-	parseExistingUsers();
 
 	//----------------------
 	// Listen for incoming connection requests.
@@ -269,7 +276,14 @@ int main(void)
 		return 1;
 	}
 
+	// Ouvrir et parser le contenu du fichier des utilisateurs et des mots de passe
+	parseExistingUsers();
+
 	printf("En attente des connections des clients sur le port %d...\n\n", ntohs(service.sin_port));
+
+	// Ouvrir et lire l'historique de messages
+	readMessageLog();
+	cout << endl << "------------Fin the l'historique------------" << endl;
 
 	while (true) {	
 		sockaddr_in sinRemote;
@@ -313,13 +327,38 @@ void parseExistingUsers() {
 	string username;
 	string password;
 
-	userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  // TODO Remove hardcoded filename value?
-	while (getline(userFile, username, ';')) {
+	userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  
+	while (getline(userFile, username)) {
 		getline(userFile, password);
 		users.insert(pair<string, string>(username, password));
 		cout << "username: " << username << ", password: " << password << endl;
 	}
 	userFile.close();
+}
+
+void readMessageLog() {
+	msgFile.open(MESSAGE_LOG, fstream::in);
+
+	string message = "";
+
+	while(getline(msgFile, message)) {
+		// Convertir en char*
+		char * messageChar = new char[message.length() + 1];
+		strcpy(messageChar, message.c_str());
+
+		last15Messages->push_back(messageChar);
+
+		if (last15Messages->size() > 15)
+			last15Messages->pop_front();
+	}
+
+	// Imprimer les 15 messages dans le console
+	for (auto it = last15Messages->begin(); it != last15Messages->end(); it++) {
+		std::cout << *it << endl;
+	}
+
+	msgFile.close();
+	
 }
 
 bool verifyUser(SOCKET sd, string username, string password) {
@@ -353,7 +392,7 @@ bool verifyUser(SOCKET sd, string username, string password) {
 		userFileMutex.lock();
 		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  
 		users.insert(pair<string, string>(username, password));
-		userFile << username << ";" << password << endl;  // IMPORTANT : The \n needs to be there before the end of the file (endl is necessary for correct parsing)
+		userFile << username << endl << password << endl;  // IMPORTANT : The \n needs to be there before the end of the file (endl is necessary for correct parsing)
 		userFile.close();
 		userFileMutex.unlock();
 		/// End critical section
@@ -373,7 +412,7 @@ ClientInfo getClientFromSocket(SOCKET sd) {
 }
 
 //[Nom d’utilisateur - Adresse IP : Port client - 2017-10-13@13:02:01]:
-string writeMessageToFile(ofstream& msgFile, ClientInfo sender , string msg) {
+string writeMessageToFile(ClientInfo sender , string msg) {
 	// Get current time
 	auto t = std::time(nullptr);
 	auto tm = *std::localtime(&t);
@@ -388,10 +427,14 @@ string writeMessageToFile(ofstream& msgFile, ClientInfo sender , string msg) {
 	sstr << sender.username;
 	std::string str = sstr.str();
 
-	string log = "[" + str + " - " + sender.IP + " - " + currentTime + "]: " + msg;
+	string log = "[" + str + " - " + sender.IP + " - " + currentTime + "]: " + msg + '\n';
 
-	cout << log << endl;
-	msgFile << log << endl;
+	cout << log;
+
+	// Ouvrir le fichier txt pour enregistrement de messages
+	msgFile.open(MESSAGE_LOG, fstream::out | fstream::app);
+	msgFile << log;
+	msgFile.close();
 
 	return log;
 }
@@ -480,9 +523,6 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 DWORD WINAPI MessageSendHandler(void* sd_)
 {
-	// Ouvrir le fichier txt pour enregistrement de messages
-	ofstream msgFile;
-	msgFile.open(MESSAGE_LOG, fstream::out | fstream::app);
 
 	while (true) {
 		// Ajouter les nouveaux clients et envoyer les 15 derniers messages
@@ -492,8 +532,8 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		while (!nouveauxClients->empty()) {
 			ClientInfo nv = nouveauxClients->front();
 			// Envoyer les 15 derniers messages
-			for (std::deque<LoggedMessage>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
-				int iSendResult = send(nv.sd, it->message, strlen(it->message), 0);
+			for (std::deque<char*>::iterator it = last15Messages->begin(); it != last15Messages->end(); ++it) {
+				int iSendResult = send(nv.sd, *it, strlen(*it), 0);
 				Sleep(10); // Eviter d'envoyer trop vite pour avoir du beau formattage
 
 				if (iSendResult == SOCKET_ERROR) {
@@ -518,14 +558,14 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		Message msg = messageQueue->front();
 
 		// Écrire dans le fichiers le messages
-		string formattedMsg = writeMessageToFile(msgFile, msg.sender, msg.message);
+		string formattedMsg = writeMessageToFile(msg.sender, msg.message);
 
 		// Convert to char*
 		char * formattedMsgChar = new char[formattedMsg.length() + 1];
 		strcpy(formattedMsgChar, formattedMsg.c_str());
 
 		// Ajouter le message aux 15 derniers msgs
-		last15Messages->push_back({ msg.sender.username, msg.sender.IP, formattedMsgChar });
+		last15Messages->push_back(formattedMsgChar);
 		if (last15Messages->size() > 15)
 			last15Messages->pop_front();
 
