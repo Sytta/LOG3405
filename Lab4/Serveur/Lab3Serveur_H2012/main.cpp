@@ -133,7 +133,6 @@ std::deque<char*> *last15Messages = new std::deque<char*>();
 
 // Gestion des utilisateurs et des mots de passe
 std::mutex userFileMutex;
-char delimiter = '\u03B4';
 fstream userFile;
 fstream msgFile;
 map<string, string> users;
