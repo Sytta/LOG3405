@@ -25,6 +25,7 @@ int __cdecl main(int argc, char **argv)
                     *ptr = NULL,
                     hints;
     char motEnvoye[LONGEUR_MSG];
+	std::string messageEnvoye = "";
 	int iResult;
 
 	//--------------------------------------------
@@ -187,7 +188,7 @@ int __cdecl main(int argc, char **argv)
 	printf("Connecte au serveur %s:%s\n\n", host, port);
     freeaddrinfo(result);
 
-	std::cout << "Bienvenue!" << std::endl;
+	std::cout << "Bienvenue! Vos messages ne doivent pas depasse 200 caracteres en longueurs" << std::endl << std::endl;
 
 	// Creer le thread pour recevoir des messages
 	DWORD msRecvTheadID;
@@ -196,23 +197,30 @@ int __cdecl main(int argc, char **argv)
 	//----------------------------
 	// Demander à l'usager un mot a envoyer au serveur
 	//-----------------------------
-	gets_s(motEnvoye);
+	std::getline(std::cin, messageEnvoye);
 
 	// Envoyer des messages au serveur tant que le mssage n'est pas vide
-	while (std::string(motEnvoye).size() > 0 ) {
-		
-		iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
-		if (iResult == SOCKET_ERROR) {
-			//printf("Erreur du send: %d\n", WSAGetLastError());
-			std::cout << "Au revoir! " << std::endl;
-			closesocket(leSocket);
-			WSACleanup();
-			printf("Appuyez une touche pour finir\n");
-			getchar();
-			return 1;
+	while (messageEnvoye.size() > 0 ) {
+		if (messageEnvoye.size() > 200) {
+			std::cout << "ERREUR! Votre message depasse 200 caracteres. Il ne sera pas envoye." << std::endl;
+		}
+		else {
+
+			std::strcpy(motEnvoye, messageEnvoye.c_str());
+
+			iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
+			if (iResult == SOCKET_ERROR) {
+				//printf("Erreur du send: %d\n", WSAGetLastError());
+				std::cout << "Au revoir! " << std::endl;
+				closesocket(leSocket);
+				WSACleanup();
+				printf("Appuyez une touche pour finir\n");
+				getchar();
+				return 1;
+			}
 		}
 
-		gets_s(motEnvoye);
+		std::getline(std::cin, messageEnvoye);
 	}
 
 	iResult = shutdown(leSocket, SD_SEND);

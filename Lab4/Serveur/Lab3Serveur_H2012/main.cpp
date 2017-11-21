@@ -497,7 +497,7 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 
 		} else {
 			//cout << WSAGetLastErrorMessage("Echec de la reception !") << endl;
-			cout << "Fermeture du client." << endl;
+			cout << "Client " << client.username << " a quitte" << endl;
 			break;
 		}
 	} while (readBytes > 0);
@@ -572,7 +572,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 
 			int iSendResult = send(it->sd, formattedMsgChar, strlen(formattedMsgChar), 0);
 			if (iSendResult == SOCKET_ERROR) {
-				printf("send failed with error: %d\n", WSAGetLastError());
+				//printf("send failed with error: %d\n", WSAGetLastError());
 				cout << "Client " << it->username << " a quitte" << endl;
 				it = clients->erase(it);
 			} else {
