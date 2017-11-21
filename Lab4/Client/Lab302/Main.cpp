@@ -255,6 +255,7 @@ DWORD WINAPI MessageRecvHandler(void* sd_)
 	char motRecu[LONGEUR_MSG + 1] = "";
 
 	while (true) {
+		memset(motRecu, 0, LONGEUR_MSG + 1);
 		iResult = recv(leSocket, motRecu, LONGEUR_MSG, 0);
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);

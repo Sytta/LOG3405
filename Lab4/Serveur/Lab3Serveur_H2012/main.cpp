@@ -446,14 +446,14 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	int res = getpeername(sd, (struct sockaddr *)&client_ip, &addr_size);
 	string IP = std::string(inet_ntoa(client_ip.sin_addr)) + " : " + std::to_string(ntohs(client_ip.sin_port));
 
-	char readBuffer[MAX_MSG_LEN_BYTES] = "";
+	char readBuffer[MAX_MSG_LEN_BYTES + 1] = "";
 	int readBytes;
 
 	// Get username and password from user
 	string password;
 	string username;
 	do {
-
+		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
 			cout << "Error receiving username. Closing client connection." << endl;
@@ -462,7 +462,7 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 		}
 		username = readBuffer;
 
-
+		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
 			cout << "Error receiving password. Closing client connection." << endl;
@@ -483,8 +483,10 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	/// End critical section
 
 	do {
+		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes > 0) {
+			readBuffer[readBytes] = '\0';
 			// Change socket to IP as sender
 			ClientInfo sender = getClientFromSocket(sd);
 			Message msg = { sender, readBuffer };
@@ -584,21 +586,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 		messageQueue->pop();	
 	}
 
-	// Shut down the socket
-	/*int ishutDown;
-
-	ishutDown = shutdown(sd, SD_SEND);
-	if (ishutDown == SOCKET_ERROR) {
-	printf("shutdown failed with error: %d\n", WSAGetLastError());
-	closesocket(ishutDown);
-	WSACleanup();
-	return 1;
-	}*/
-
-	msgFile.close();
 	delete[] clients;
-	//closesocket(sd);
-	//WSACleanup();
 
 	return 0;
 }
