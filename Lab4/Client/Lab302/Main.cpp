@@ -18,13 +18,20 @@ SOCKET leSocket;
 extern DWORD WINAPI MessageRecvHandler(void* sd_);
 extern bool isValidIP(char* IP);
 
+/*
+ * Fonction : main
+ * Description :
+ *  - Initialisation du client
+ *  - Authentification avec le serveur
+ *  - Envoie des messages au serveur suite à une connexion acceptée
+ */
 int __cdecl main(int argc, char **argv)
 {
     WSADATA wsaData;
     struct addrinfo *result = NULL,
                     *ptr = NULL,
                     hints;
-    char motEnvoye[LONGEUR_MSG];
+	char motEnvoye[LONGEUR_MSG + 1] = { 0 };
 	std::string messageEnvoye = "";
 	int iResult;
 
@@ -101,8 +108,6 @@ int __cdecl main(int argc, char **argv)
 	//On parcours les adresses retournees jusqu'a trouver la premiere adresse IPV4
 	while((result != NULL) &&(result->ai_family!=AF_INET))   
 			 result = result->ai_next; 
-
-//	if ((result != NULL) &&(result->ai_family==AF_INET)) result = result->ai_next;  
 	
 	//-----------------------------------------
 	if (((result == NULL) ||(result->ai_family!=AF_INET))) {
@@ -188,7 +193,7 @@ int __cdecl main(int argc, char **argv)
 	printf("Connecte au serveur %s:%s\n\n", host, port);
     freeaddrinfo(result);
 
-	std::cout << "Bienvenue! Vos messages ne doivent pas depasse 200 caracteres en longueurs" << std::endl << std::endl;
+	std::cout << "Bienvenue! Vos messages ne doivent pas depasse 200 caracteres en longueur" << std::endl << std::endl;
 
 	// Creer le thread pour recevoir des messages
 	DWORD msRecvTheadID;
@@ -203,11 +208,9 @@ int __cdecl main(int argc, char **argv)
 	while (messageEnvoye.size() > 0 ) {
 		if (messageEnvoye.size() > 200) {
 			std::cout << "ERREUR! Votre message depasse 200 caracteres. Il ne sera pas envoye." << std::endl;
-		}
-		else {
+		} else {
 
 			std::strcpy(motEnvoye, messageEnvoye.c_str());
-
 			iResult = send(leSocket, motEnvoye, strlen(motEnvoye) + 1, 0);
 			if (iResult == SOCKET_ERROR) {
 				//printf("Erreur du send: %d\n", WSAGetLastError());
@@ -249,13 +252,16 @@ bool isValidIP(char *IP)
 	return result != 0;
 }
 
+/*
+ * Fonction : MessageRecvHandler
+ * Description : Recevoir les les messages du serveur et les afficher.
+ */
 DWORD WINAPI MessageRecvHandler(void* sd_) 
 {
 	int iResult;
 	char motRecu[LONGEUR_MSG + 1] = "";
 
 	while (true) {
-		memset(motRecu, 0, LONGEUR_MSG + 1);
 		iResult = recv(leSocket, motRecu, LONGEUR_MSG, 0);
 		if (iResult > 0) {
 			//printf("Nombre d'octets recus: %d\n", iResult);

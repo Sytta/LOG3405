@@ -175,6 +175,13 @@ const char* WSAGetLastErrorMessage(const char* pcMessagePrefix, int nErrorID = 0
     return acErrorBuffer;
 }
 
+/*
+ * Fonction : main
+ * Description :
+ *  - Initialisation du socket d'écoute du serveur
+ *  - Écouter pour les clients qui veulent de connecter
+ *  - Création d'un fil pour traiter chaque client
+ */
 int main(void) 
 {
 	//----------------------
@@ -276,7 +283,7 @@ int main(void)
 
 	// Ouvrir et lire l'historique de messages
 	readMessageLog();
-	cout << endl << "------------Fin the l'historique------------" << endl;
+	cout << endl << "------------Fin de l'historique------------" << endl;
 
 	while (true) {	
 		sockaddr_in sinRemote;
@@ -300,7 +307,6 @@ int main(void)
 		DWORD nThreadID;
 		// Creer le producteur
         CreateThread(0, 0, ClientMessageHandler, (void*)sd, 0, &nThreadID);
-
     }
 
 	delete[] nouveauxClients;
@@ -316,6 +322,11 @@ bool isValidIP(char *IP)
 	return result != 0;
 }
 
+/*
+ * Fonction : parseExistingUsers
+ * Description : Lire le fichier des utilisateurs et récupérer les informations
+ *  des utilisateurs qui ont déjà été connecté au serveur.
+ */
 void parseExistingUsers() {
 	string username;
 	string password;
@@ -324,11 +335,16 @@ void parseExistingUsers() {
 	while (getline(userFile, username)) {
 		getline(userFile, password);
 		users.insert(pair<string, string>(username, password));
-		cout << "username: " << username << ", password: " << password << endl;
+		//cout << "username: " << username << ", password: " << password << endl;  // Uncomment to display existing users on startup
 	}
 	userFile.close();
 }
 
+/*
+ * Fonction : readMessageLog
+ * Description : Lire le fichier des messages et récupérer les 15 messages
+ *  les plus récents.
+ */
 void readMessageLog() {
 	msgFile.open(MESSAGE_LOG, fstream::in);
 
@@ -352,9 +368,16 @@ void readMessageLog() {
 	}
 
 	msgFile.close();
-	
 }
 
+/*
+ * Fonction : verifyUser
+ * Description : Vérifier si les informations du client correspondent à une
+ *  entrée dans le fichier des utilisateurs. Si l'utilisateur existe mais le
+ *  mot de passe n'est pas valide, le client est rejetée. Si l'utilisateur
+ *  n'existe pas ses informations sont enregistrées dans le fichier et la
+ *  connexion est acceptée.
+ */
 bool verifyUser(SOCKET sd, string username, string password) {
 
 	// Check if user exists in file
@@ -400,12 +423,20 @@ bool verifyUser(SOCKET sd, string username, string password) {
 	}
 }
 
+// Récupère le nom du client associé au socket
 ClientInfo getClientFromSocket(SOCKET sd) {
 	auto it = find_if(clients->begin(), clients->end(), [&](const ClientInfo& obj) {return obj.sd == sd; });
 	return *it;
 }
 
-//[Nom d’utilisateur - Adresse IP : Port client - 2017-10-13@13:02:01]:
+/*
+ * Fonction : writeMessageToFile
+ * Description : Écrire le message sur la console du serveur et dans le fichier
+ *  des messages précédents.
+ * 
+ * Format d'écriture : 
+ *  [Nom d’utilisateur - Adresse IP : Port client - 2017-10-13@13:02:01]:
+ */
 string writeMessageToFile(ClientInfo sender , string msg) {
 	// Get current time
 	auto t = std::time(nullptr);
@@ -433,9 +464,13 @@ string writeMessageToFile(ClientInfo sender , string msg) {
 	return log;
 }
 
-//// ClientMessageHandler ///////////////////////////////////////////////////////
-// TODO: Put relevant function description here
-
+/*
+ * Fonction : ClientMessageHandler
+ * Description :
+ *  - Effectuer l'authentification du client et rejeter la connexion si
+ *     nécessaire
+ *  - Recevoir les messages du client une fois que la connexion a été acceptée
+ */
 DWORD WINAPI ClientMessageHandler(void* sd_)
 {
 	//Get IP adress
@@ -453,7 +488,6 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	string password;
 	string username;
 	do {
-		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
 			cout << "Error receiving username. Closing client connection." << endl;
@@ -462,7 +496,6 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 		}
 		username = readBuffer;
 
-		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
 		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
 		if (readBytes <= 0) {
 			cout << "Error receiving password. Closing client connection." << endl;
@@ -483,10 +516,8 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	/// End critical section
 
 	do {
-		memset(readBuffer, 0, MAX_MSG_LEN_BYTES + 1);
-		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES, 0);
+		readBytes = recv(sd, readBuffer, MAX_MSG_LEN_BYTES + 1, 0);
 		if (readBytes > 0) {
-			readBuffer[readBytes] = '\0';
 			// Change socket to IP as sender
 			ClientInfo sender = getClientFromSocket(sd);
 			Message msg = { sender, readBuffer };
@@ -514,9 +545,12 @@ DWORD WINAPI ClientMessageHandler(void* sd_)
 	return 0;
 }
 
-//// MessageSendHandler ///////////////////////////////////////////////////////
-// TODO: Put relevant function description here
-
+/*
+ * Fonction : MessageSendHandler
+ * Description :
+ *  - Envoyer les les messages aux autres clients
+ *  - Sauvegarder les messages précédents
+ */
 DWORD WINAPI MessageSendHandler(void* sd_)
 {
 
