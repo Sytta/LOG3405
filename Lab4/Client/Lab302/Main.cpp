@@ -1,3 +1,9 @@
+/*
+* Fichier : Main.cpp
+* Description : Code du client.
+* Auteurs : Erica Bugden, Yawen Hou (Avec des sections adaptées du code du lab 3)
+*/
+
 #undef UNICODE
 
 #include <winsock2.h>
@@ -146,10 +152,9 @@ int __cdecl main(int argc, char **argv)
 
 	do {
 		std::cout << "username: ";
-		//gets_s(username);
 		std::getline(std::cin, username_input);
 		if (username_input.length() > LONGEUR_MSG) {
-			printf("Le username ne peut pas dépasser 200 charactères en longueur. Veuillez recommencer.\n");
+			printf("Le username ne peut pas depasser 200 characteres en longueur. Veuillez recommencer.\n");
 			continue;
 		}
 		std::strcpy(username, username_input.c_str());
@@ -164,10 +169,9 @@ int __cdecl main(int argc, char **argv)
 		}
 
 		std::cout << "password: ";
-		//gets_s(password);
 		std::getline(std::cin, password_input);
 		if (password_input.length() > LONGEUR_MSG) {
-			printf("Le password ne peut pas dépasser 200 charactères en longueur. Veuillez recommencer.\n");
+			printf("Le password ne peut pas depasser 200 characteres en longueur. Veuillez recommencer.\n");
 			continue;
 		}
 		std::strcpy(password, password_input.c_str());
@@ -248,7 +252,7 @@ int __cdecl main(int argc, char **argv)
 		return 1;
 	}
 
-    // cleanup
+    // Cleanup
     closesocket(leSocket);
     WSACleanup();
 

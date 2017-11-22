@@ -1,3 +1,9 @@
+/*
+ * Fichier : main.cpp 
+ * Description : Code du serveur.
+ * Auteurs : Erica Bugden, Yawen Hou (Avec des sections adaptées du code du lab 3)
+ */
+
 #undef UNICODE
 
 #include <winsock2.h>
@@ -246,7 +252,7 @@ int main(void)
     
 	// Recuperation de l'adresse locale
 	hostent *thisHost;
-	thisHost = gethostbyname(host);  // TODO: Set server IP using user input
+	thisHost = gethostbyname(host);
 	char* ip;
 	ip = inet_ntoa(*(struct in_addr*) *thisHost->h_addr_list);
 	printf("Adresse locale trouvee %s : \n\n", ip);
@@ -386,11 +392,11 @@ bool verifyUser(SOCKET sd, string username, string password) {
 	userFileMutex.lock();
 	auto it = users.find(username);
 	if (it != users.end()) {
-		userFileMutex.unlock();
-		/// End critical section
-
 		// Verify the password
 		if (it->second == password) {
+			userFileMutex.unlock();
+			/// End critical section
+
 			char serverResponse[2] = "1";
 			iResult = send(sd, serverResponse, strlen(serverResponse) + 1 , 0);
 			if (iResult == SOCKET_ERROR) {
@@ -399,6 +405,9 @@ bool verifyUser(SOCKET sd, string username, string password) {
 			}
 			return true;
 		} else {
+			userFileMutex.unlock();
+			/// End critical section
+
 			char serverResponse[2] = "0";
 			iResult = send(sd, serverResponse, strlen(serverResponse) + 1, 0);
 			if (iResult == SOCKET_ERROR) {
@@ -611,7 +620,7 @@ DWORD WINAPI MessageSendHandler(void* sd_)
 			int iSendResult = send(it->sd, formattedMsgChar, strlen(formattedMsgChar), 0);
 			if (iSendResult == SOCKET_ERROR) {
 				//printf("send failed with error: %d\n", WSAGetLastError());
-				cout << "Client " << it->username << " a quitte" << endl;
+				//cout << "Client " << it->username << " a quitte" << endl;
 				it = clients->erase(it);
 			} else {
 				// Incrémenter si le client n'a pas été effacé (erase() retourne une itérateur qui pointe déjà vers le prochain)
