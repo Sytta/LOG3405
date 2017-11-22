@@ -382,8 +382,13 @@ bool verifyUser(SOCKET sd, string username, string password) {
 
 	// Check if user exists in file
 	int iResult;
+	/// Critical section
+	userFileMutex.lock();
 	auto it = users.find(username);
 	if (it != users.end()) {
+		userFileMutex.unlock();
+		/// End critical section
+
 		// Verify the password
 		if (it->second == password) {
 			char serverResponse[2] = "1";
@@ -404,9 +409,6 @@ bool verifyUser(SOCKET sd, string username, string password) {
 	}
 	else {
 		// Create the user entry
-
-		/// Critical section
-		userFileMutex.lock();
 		userFile.open(USERS_FILENAME, fstream::in | fstream::out | fstream::app);  
 		users.insert(pair<string, string>(username, password));
 		userFile << username << endl << password << endl;  // IMPORTANT : The \n needs to be there before the end of the file (endl is necessary for correct parsing)
